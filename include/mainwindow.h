@@ -19,6 +19,7 @@
 #include "QuestCommunicator.h"
 #include "QuestVideoMngr.h"
 #include "CameraInterface.h"
+#include "Util.hpp"
 
 class CalibrationFrame
 {
@@ -39,7 +40,7 @@ public:
     void setFrontPage();
     void setConnectToQuestPage();
     void setCameraSelectPage();
-    void setCameraParamBox(CameraEnumerator *camEnumerator);
+    void setCameraParamBox(RPCameraInterface::CameraEnumerator *camEnumerator);
     void setUSBCameraParamBox();
     void setCalibrationOptionPage();
     void setCheckCalibrationPage();
@@ -53,7 +54,7 @@ public:
     void postProcessThreadFunc();
     bool calibratePose();
     void captureCalibFrame();
-    void refreshCameraComboBox(CameraEnumerator *camEnumerator);
+    void refreshCameraComboBox(RPCameraInterface::CameraEnumerator *camEnumerator);
 private slots:
     void onClickStartButton();
     void onClickConnectToQuestButton();
@@ -90,16 +91,18 @@ private:
 
     QLabel *instructionLabel;
 
-    QuestVideoMngr *questVideoMngr;
+    libQuestMR::QuestVideoMngr *questVideoMngr;
 
     std::string currentPageName;
 
     std::string record_folder;
-    bool recording;
 
     int currentCameraEnumId = 0;
 
     double postProcessVal = 0;
+
+    volatile bool recording;
+    std::string recordedVideoFilename, recordedVideoTimestampFilename;
 
     QProcess *segmentationProcess = NULL;
 
@@ -120,4 +123,7 @@ private:
     };
     QuestConnectionStatus questConnectionStatus = QuestConnectionStatus::NotConnected;
 };
+
+void clearLayout(QLayout *layout);
+
 #endif // MAINWINDOW_H
