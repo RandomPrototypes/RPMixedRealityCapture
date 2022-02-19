@@ -1,10 +1,17 @@
 #include "mainwindow.h"
+#include "RecordMixedRealityPage.h"
+#include "PostProcessingPage.h"
 #include <QDir>
 
-void MainWindow::setRecordMixedRealityPage()
+RecordMixedRealityPage::RecordMixedRealityPage(MainWindow *win)
+    :win(win)
 {
-    currentPageName = "recordMixedReality";
-    clearMainWidget();
+}
+
+void RecordMixedRealityPage::setPage()
+{
+    win->currentPageName = MainWindow::PageName::recordMixedReality;
+    win->clearMainWidget();
 
     QVBoxLayout *layout = new QVBoxLayout();
     layout->setContentsMargins(0,0,0,0);
@@ -18,44 +25,44 @@ void MainWindow::setRecordMixedRealityPage()
 
     QTabWidget *tabWidget = new QTabWidget;
 
-    camPreviewWidget = new OpenCVWidget(cv::Size(1280, 720));
+    win->camPreviewWidget = new OpenCVWidget(cv::Size(1280, 720));
 
-    camPreviewWidget->setImg(cv::Mat());
+    win->camPreviewWidget->setImg(cv::Mat());
 
-    questPreviewWidget = new OpenCVWidget(cv::Size(1280, 720));
+    win->questPreviewWidget = new OpenCVWidget(cv::Size(1280, 720));
 
-    questPreviewWidget->setImg(cv::Mat());
+    win->questPreviewWidget->setImg(cv::Mat());
 
-    tabWidget->addTab(camPreviewWidget, tr("Camera"));
-    tabWidget->addTab(questPreviewWidget, tr("Quest"));
+    tabWidget->addTab(win->camPreviewWidget, tr("Camera"));
+    tabWidget->addTab(win->questPreviewWidget, tr("Quest"));
 
     layout->addWidget(calibrationLabel);
     layout->addWidget(startRecordingButton);
     layout->addWidget(tabWidget);
 
-    mainWidget->setLayout(layout);
+    win->mainWidget->setLayout(layout);
 
     connect(startRecordingButton,SIGNAL(clicked()),this,SLOT(onClickStartRecordingButton()));
 }
 
-void MainWindow::onClickStartRecordingButton()
+void RecordMixedRealityPage::onClickStartRecordingButton()
 {
-    if(!recording)
+    if(!win->recording)
     {
-        record_folder = "output/"+getCurrentDateTimeStr();
-        QDir().mkdir(record_folder.c_str());
-        recording = true;
+        win->record_folder = "output/"+getCurrentDateTimeStr();
+        QDir().mkdir(win->record_folder.c_str());
+        win->recording = true;
         startRecordingButton->setText("stop recording");
     } else {
-        recording = false;
-        setPostProcessingPage();
-        delete videoInput;
-        delete questInput;
-        camPreviewWidget = NULL;
-        questPreviewWidget = NULL;
-        postProcessingThread = new std::thread([&]()
+        win->recording = false;
+        win->postProcessingPage->setPage();
+        delete win->videoInput;
+        delete win->questInput;
+        win->camPreviewWidget = NULL;
+        win->questPreviewWidget = NULL;
+        win->postProcessingThread = new std::thread([&]()
         {
-            postProcessThreadFunc();
+            win->postProcessingPage->postProcessThreadFunc();
         });
     }
 }

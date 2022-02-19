@@ -25,9 +25,21 @@ class CalibrationFrame
 {
 public:
     cv::Mat img;
+    uint64_t imgTimestamp;
     libQuestMR::QuestFrameData frameData;
     cv::Point2d rightControllerImgPos;
+    std::vector<cv::Point2f> corners;
 };
+
+class CalibrateWithChessboardPage;
+class CalibrateCameraPosePage;
+class CalibrationOptionPage;
+class CameraSelectPage;
+class CameraPreviewPage;
+class CheckCalibrationPage;
+class ConnectQuestPage;
+class RecordMixedRealityPage;
+class PostProcessingPage;
 
 class MainWindow : public QMainWindow
 {
@@ -38,70 +50,54 @@ public:
     ~MainWindow();
 
     void setFrontPage();
-    void setConnectToQuestPage();
-    void setCameraSelectPage();
     void setCameraParamBox(RPCameraInterface::CameraEnumerator *camEnumerator);
     void setUSBCameraParamBox();
-    void setCalibrationOptionPage();
-    void setCheckCalibrationPage();
-    void setRecalibratePosePage();
-    void setRecordMixedRealityPage();
-    void setPostProcessingPage();
     void clearMainWidget();
     void questCommunicatorThreadFunc();
     void videoThreadFunc(std::string cameraId);
     void questThreadFunc();
     void postProcessThreadFunc();
     bool calibratePose();
-    void captureCalibFrame();
+    void capturePoseCalibFrame();
+    void captureChessboardCalibFrame();
     void refreshCameraComboBox(RPCameraInterface::CameraEnumerator *camEnumerator);
+
+    void captureChessboardFrame();
+    void detectChessboardsAndCalibrate();
+
 private slots:
     void onClickStartButton();
-    void onClickConnectToQuestButton();
-    void onClickCameraButton(int i);
-    void onClickSelectCameraButton();
-    void onClickLoadCalibrationFileButton();
-    void onClickCheckCurrentCalibrationButton();
-    void onClickRecordMixedRealityButton();
-    void onClickRecalibratePoseButton();
-    void onClickStartRecordingButton();
-    void onClickCaptureFrameButton();
-    void onClickAnnotateCalibFrameButton();
     void onClickPreviewWidget();
-    void setCameraPreview();
     void onTimer();
-    void processOutput();
-private:
+protected:
+    friend class CalibrateWithChessboardPage;
+    friend class CalibrateCameraPosePage;
+    friend class CalibrationOptionPage;
+    friend class CameraSelectPage;
+    friend class CameraPreviewPage;
+    friend class CheckCalibrationPage;
+    friend class ConnectQuestPage;
+    friend class RecordMixedRealityPage;
+    friend class PostProcessingPage;
     QWidget *mainWidget;
-    QVBoxLayout *cameraParamLayout;
-    QComboBox *listCameraCombo;
-    QLineEdit *ipAddressField;
-    QPushButton *connectButton;
-    QPushButton *startRecordingButton;
-    QProgressBar *progressBar;
     OpenCVWidget *camPreviewWidget;
     OpenCVWidget *questPreviewWidget;
-    std::vector<std::string> listCameraIds;
     QTimer *timer;
     VideoInputMngr *videoInput;
     VideoInputMngr *questInput;
     std::string cameraId;
 
-    QHBoxLayout *hlayout;
+    //QHBoxLayout *hlayout;
 
     QLabel *instructionLabel;
 
     libQuestMR::QuestVideoMngr *questVideoMngr;
 
-    std::string currentPageName;
-
     std::string record_folder;
 
     int currentCameraEnumId = 0;
 
-    double postProcessVal = 0;
-
-    volatile bool recording;
+    volatile bool recording, recording_finished;
     std::string recordedVideoFilename, recordedVideoTimestampFilename;
 
     QProcess *segmentationProcess = NULL;
@@ -122,6 +118,31 @@ private:
         ConnectionFailed,
     };
     QuestConnectionStatus questConnectionStatus = QuestConnectionStatus::NotConnected;
+
+    enum class PageName
+    {
+        frontPage,
+        recalibratePose,
+        calibrateWithChessboard,
+        checkCalibration,
+        connectToQuest,
+        cameraPreview,
+        cameraSelect,
+        postProcessing,
+        recordMixedReality,
+        calibrationOption
+    };
+    PageName currentPageName;
+
+    CalibrateWithChessboardPage *calibrateWithChessboardPage;
+    CalibrateCameraPosePage *calibrateCameraPosePage;
+    CalibrationOptionPage *calibrationOptionPage;
+    CameraSelectPage *cameraSelectPage;
+    CameraPreviewPage *cameraPreviewPage;
+    CheckCalibrationPage *checkCalibrationPage;
+    ConnectQuestPage *connectQuestPage;
+    RecordMixedRealityPage *recordMixedRealityPage;
+    PostProcessingPage *postProcessingPage;
 };
 
 void clearLayout(QLayout *layout);

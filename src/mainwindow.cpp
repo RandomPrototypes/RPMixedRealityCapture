@@ -25,6 +25,16 @@
 #include "CameraInterfaceAndroid.h"
 #include "ImageFormatConverter.h"
 
+#include "CalibrateCameraPosePage.h"
+#include "CalibrateWithChessboardPage.h"
+#include "CalibrationOptionPage.h"
+#include "CameraPreviewPage.h"
+#include "CameraSelectPage.h"
+#include "CheckCalibrationPage.h"
+#include "ConnectQuestPage.h"
+#include "PostProcessingPage.h"
+#include "RecordMixedRealityPage.h"
+
 using namespace RPCameraInterface;
 
 MainWindow::MainWindow(QWidget *parent)
@@ -54,6 +64,16 @@ MainWindow::MainWindow(QWidget *parent)
 
     setCentralWidget(mainWidget);
 
+    calibrateWithChessboardPage = new CalibrateWithChessboardPage(this);
+    calibrateCameraPosePage = new CalibrateCameraPosePage(this);
+    calibrationOptionPage = new CalibrationOptionPage(this);
+    cameraSelectPage = new CameraSelectPage(this);
+    cameraPreviewPage = new CameraPreviewPage(this);
+    checkCalibrationPage = new CheckCalibrationPage(this);
+    connectQuestPage = new ConnectQuestPage(this);
+    recordMixedRealityPage = new RecordMixedRealityPage(this);
+    postProcessingPage = new PostProcessingPage(this);
+
 
     timer->start();
 
@@ -74,7 +94,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::setFrontPage()
 {
-    currentPageName = "frontPage";
+    currentPageName = PageName::frontPage;
     QVBoxLayout *layout = new QVBoxLayout();
     layout->setSpacing(0);
     layout->setContentsMargins(0, 0, 0, 10);
@@ -116,19 +136,6 @@ void MainWindow::clearMainWidget()
     }
 }
 
-bool MainWindow::calibratePose()
-{
-    std::vector<cv::Point3d> listPoint3d;
-    std::vector<cv::Point2d> listPoint2d;
-    for(size_t i = 0; i < listCalibrationFrames.size(); i++)
-    {
-        listPoint3d.push_back(listCalibrationFrames[i].frameData.getRightHandPos());
-        listPoint2d.push_back(listCalibrationFrames[i].rightControllerImgPos);
-    }
-    //return calibData.calibrateCamPose(listPoints3D, listPoints2D);;
-    return true;
-}
-
 void MainWindow::questCommunicatorThreadFunc()
 {
     if(!questCom.connect("192.168.10.105", 25671))
@@ -143,6 +150,7 @@ void MainWindow::questCommunicatorThreadFunc()
 
 void MainWindow::videoThreadFunc(std::string cameraId)
 {
+    recording_finished = false;
     /*cv::VideoCapture cap(cameraId);
 
     //cap.set(cv::CAP_PROP_FRAME_WIDTH,1920);
@@ -210,6 +218,7 @@ void MainWindow::videoThreadFunc(std::string cameraId)
         //cap >> img;
         if(img.empty())
             break;
+        qDebug() << "recv frame";
         if(recording)
         {
             if(!recordingStarted)
@@ -243,6 +252,7 @@ void MainWindow::videoThreadFunc(std::string cameraId)
                 videoEncoder->release();
                 videoEncoder = NULL;
             }
+            recording_finished = true;
             recordingStarted = false;
         }
         videoInput->setImg(img, timestamp);
@@ -288,93 +298,6 @@ void MainWindow::questThreadFunc()
     videoSrc.Disconnect();
 }
 
-void MainWindow::setCheckCalibrationPage()
-{
-    currentPageName = "checkCalibration";
-    clearMainWidget();
-
-    QVBoxLayout *layout = new QVBoxLayout();
-    layout->setContentsMargins(0,0,0,0);
-    //layout->setAlignment(Qt::AlignTop);
-
-    QLabel *calibrationLabel = new QLabel;
-    calibrationLabel->setText("check calibration: ");
-
-    camPreviewWidget = new OpenCVWidget(cv::Size(1280, 720));
-
-    camPreviewWidget->setImg(cv::Mat());
-    layout->addWidget(calibrationLabel);
-    layout->addWidget(camPreviewWidget);
-
-    mainWidget->setLayout(layout);
-}
-
-void MainWindow::setCameraPreview()
-{
-    currentPageName = "cameraPreview";
-    clearMainWidget();
-
-    QVBoxLayout *layout = new QVBoxLayout();
-    layout->setContentsMargins(0,0,0,0);
-    //layout->setAlignment(Qt::AlignTop);
-
-    QLabel *calibrationLabel = new QLabel;
-    calibrationLabel->setText("calibration: ");
-
-    camPreviewWidget = new OpenCVWidget(cv::Size(1280, 720));
-
-    camPreviewWidget->setImg(cv::Mat());
-    layout->addWidget(calibrationLabel);
-    layout->addWidget(camPreviewWidget);
-
-    mainWidget->setLayout(layout);
-}
-
-void MainWindow::setRecalibratePosePage()
-{
-    currentPageName = "recalibratePose";
-    clearMainWidget();
-
-    QVBoxLayout *layout = new QVBoxLayout();
-    layout->setContentsMargins(0,0,0,0);
-    //layout->setAlignment(Qt::AlignTop);
-
-    instructionLabel = new QLabel;
-    instructionLabel->setText("Capture a few calibration frames by moving the right controller in the scene and pressing the trigger button.\nFor best result, stay still for one second before pressing the trigger.");
-
-    hlayout = new QHBoxLayout();
-    QPushButton *captureFrameButton = new QPushButton("capture frame");
-    QPushButton *nextButton = new QPushButton("next");
-
-    hlayout->addWidget(captureFrameButton);
-    hlayout->addWidget(nextButton);
-
-    camPreviewWidget = new OpenCVWidget(cv::Size(1280, 720));
-
-    camPreviewWidget->setImg(cv::Mat());
-    layout->addWidget(instructionLabel);
-    layout->addLayout(hlayout);
-    layout->addWidget(camPreviewWidget);
-
-    mainWidget->setLayout(layout);
-
-    connect(captureFrameButton,SIGNAL(clicked()),this,SLOT(onClickCaptureFrameButton()));
-    connect(nextButton,SIGNAL(clicked()),this,SLOT(onClickAnnotateCalibFrameButton()));
-    connect(camPreviewWidget,SIGNAL(clicked()),this,SLOT(onClickPreviewWidget()));
-}
-
-void MainWindow::captureCalibFrame()
-{
-    if(lastFrameData.isRightHandValid())
-    {
-        CalibrationFrame frame;
-        frame.img = videoInput->getImgCopy();
-        frame.frameData = lastFrameData;
-        listCalibrationFrames.push_back(frame);
-    }
-}
-
-
 void MainWindow::onTimer()
 {
     if(questComThreadData != NULL && questComThreadData->hasNewFrameData())
@@ -383,147 +306,33 @@ void MainWindow::onTimer()
             questComThreadData->getFrameData(&lastFrameData);
     }
 
-    if(currentPageName == "recalibratePose")
-    {
-        if(questComThreadData->getTriggerVal())
-        {
-            qDebug() << "trigger";
-            captureCalibFrame();
-            questComThreadData->setTriggerVal(false);
-        }
-    }
-
-    if(currentPageName == "annotateCalibrationFrames")
-    {
-        if(currentCalibrationFrame < listCalibrationFrames.size())
-        {
-            cv::Mat img = listCalibrationFrames[currentCalibrationFrame].img.clone();
-            if(listCalibrationFrames[currentCalibrationFrame].rightControllerImgPos.x >= 0)
-                cv::circle(img, listCalibrationFrames[currentCalibrationFrame].rightControllerImgPos, 3, cv::Scalar(0,255,0), 2);
-            camPreviewWidget->setImg(img);
-        }
-    }
-    else if(videoInput->hasNewImg && camPreviewWidget != NULL)
-    {
-        cv::Mat img = videoInput->getImgCopy();
-        if(currentPageName == "checkCalibration")
-        {
-            std::string calibDataStr = questComThreadData->getCalibData();
-            if(!calibDataStr.empty())
-            {
-                libQuestMR::QuestCalibData calibData;
-                calibData.loadXMLString(calibDataStr.c_str());
-                libQuestMR::QuestFrameData frameData = lastFrameData;
-
-                if(frameData.isHeadValid())
-                {
-                    cv::Point3d headPos(frameData.head_pos[0], frameData.head_pos[1], frameData.head_pos[2]);
-                    cv::Point2d headPos2d = calibData.projectToCam(headPos);
-                    cv::circle(img, headPos2d, 10, cv::Scalar(0,0,255), 5);
-                }
-
-                if(frameData.isLeftHandValid())
-                {
-                    cv::Point3d leftHandPos(frameData.left_hand_pos[0], frameData.left_hand_pos[1], frameData.left_hand_pos[2]);
-                    cv::Point2d leftHandPos2d = calibData.projectToCam(leftHandPos);
-                    cv::circle(img, leftHandPos2d, 10, cv::Scalar(255,0,0), 5);
-                }
-
-                if(frameData.isRightHandValid())
-                {
-                    cv::Point3d rightHandPos(frameData.right_hand_pos[0], frameData.right_hand_pos[1], frameData.right_hand_pos[2]);
-                    cv::Point2d rightHandPos2d = calibData.projectToCam(rightHandPos);
-                    cv::circle(img, rightHandPos2d, 10, cv::Scalar(0,255,0), 5);
-                }
-            }
-        }
-        camPreviewWidget->setImg(img);
-    }
+    if(currentPageName == PageName::recalibratePose)
+        calibrateCameraPosePage->onTimer();
+    else if(currentPageName == PageName::calibrateWithChessboard)
+        calibrateWithChessboardPage->onTimer();
+    else if(currentPageName == PageName::checkCalibration)
+        checkCalibrationPage->onTimer();
+    else if(currentPageName == PageName::connectToQuest)
+        connectQuestPage->onTimer();
+    else if(currentPageName == PageName::postProcessing)
+        postProcessingPage->onTimer();
 
     if(questInput->hasNewImg && questPreviewWidget != NULL)
     {
         cv::Mat img = questInput->getImgCopy();
         questPreviewWidget->setImg(img);
     }
-
-    if(currentPageName == "connectToQuest")
-    {
-        if(questConnectionStatus == QuestConnectionStatus::ConnectionFailed)
-        {
-            QMessageBox msgBox;
-            msgBox.setText("Can not connect to the quest...");
-            msgBox.exec();
-            setCameraSelectPage();
-            /*questCommunicatorThread->join();
-            questCommunicatorThread = NULL;
-            questConnectionStatus = QuestConnectionStatus::NotConnected;
-            connectButton->setText("connect");
-            connectButton->setEnabled(true);*/
-        } else if(questConnectionStatus == QuestConnectionStatus::Connected) {
-            setCameraSelectPage();
-        }
-    }
-
-    if(currentPageName == "postProcessing")
-    {
-        progressBar->setValue((int)(100*postProcessVal));
-    }
 }
 
 void MainWindow::onClickStartButton()
 {
-    setConnectToQuestPage();
-}
-
-void MainWindow::onClickCaptureFrameButton()
-{
-    captureCalibFrame();
-}
-
-
-void MainWindow::onClickAnnotateCalibFrameButton()
-{
-    if(listCalibrationFrames.size() < 4) {
-        QMessageBox msgBox;
-        msgBox.setText("You must capture at least 4 frames for calibration!!!");
-        msgBox.exec();
-    } else {
-        currentCalibrationFrame = 0;
-        currentPageName = "annotateCalibrationFrames";
-        camPreviewWidget->drawCursor = true;
-        instructionLabel->setText("click on the center of the right controller on each frame\n");
-        clearLayout(hlayout);
-    }
+    connectQuestPage->setPage();
 }
 
 void MainWindow::onClickPreviewWidget()
 {
-    if(currentPageName == "annotateCalibrationFrames")
-    {
-        listCalibrationFrames[currentCalibrationFrame].rightControllerImgPos = camPreviewWidget->localToImgPos(camPreviewWidget->mousePos);
-        if(currentCalibrationFrame + 1 == listCalibrationFrames.size())
-        {
-            std::string calibDataStr = questComThreadData->getCalibData();
-            if(!calibDataStr.empty())
-            {
-                libQuestMR::QuestCalibData calibData;
-                calibData.loadXMLString(calibDataStr.c_str());
-                std::vector<cv::Point3d> listHand3D;
-                std::vector<cv::Point2d> listHand2D;
-                for(int i = 0; i < listCalibrationFrames.size(); i++)
-                {
-                    listHand2D.push_back(listCalibrationFrames[i].rightControllerImgPos);
-                    listHand3D.push_back(listCalibrationFrames[i].frameData.getRightHandPos());
-                }
-                calibData.calibrateCamPose(listHand3D, listHand2D);
-                calibDataStr = calibData.generateXMLString();
-                questComThreadData->sendCalibDataToQuest(calibDataStr);
-                qDebug() << calibDataStr.c_str();
-                //exit(0);
-            }
-
-            setCheckCalibrationPage();
-        }
-        else currentCalibrationFrame = (currentCalibrationFrame+1) % listCalibrationFrames.size();
-    }
+    if(currentPageName == PageName::recalibratePose)
+        calibrateCameraPosePage->onClickPreviewWidget();
+    else if(currentPageName == PageName::calibrateWithChessboard)
+        calibrateWithChessboardPage->onClickPreviewWidget();
 }

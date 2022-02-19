@@ -1,9 +1,17 @@
 #include "mainwindow.h"
+#include "ConnectQuestPage.h"
+#include "CameraSelectPage.h"
+#include <QMessageBox>
 
-void MainWindow::setConnectToQuestPage()
+ConnectQuestPage::ConnectQuestPage(MainWindow *win)
+    :win(win)
 {
-    currentPageName = "connectToQuest";
-    clearMainWidget();
+}
+
+void ConnectQuestPage::setPage()
+{
+    win->currentPageName = MainWindow::PageName::connectToQuest;
+    win->clearMainWidget();
     QVBoxLayout *layout = new QVBoxLayout();
     layout->setSpacing(0);
     layout->setContentsMargins(300, 0, 300, 200);
@@ -31,21 +39,39 @@ void MainWindow::setConnectToQuestPage()
     layout->addLayout(ipAddressLayout);
     layout->addWidget(connectButton,Qt::AlignCenter);
 
-    connect(connectButton, &QPushButton::released, this, &MainWindow::onClickConnectToQuestButton);
+    connect(connectButton, SIGNAL(clicked()), this, SLOT(onClickConnectButton()));
 
-    mainWidget->setLayout(layout);
+    win->mainWidget->setLayout(layout);
 }
 
-void MainWindow::onClickConnectToQuestButton()
+void ConnectQuestPage::onClickConnectButton()
 {
     QString ipaddress = ipAddressField->text();
     connectButton->setText("connecting...");
     connectButton->setEnabled(false);
-    questConnectionStatus = QuestConnectionStatus::Connecting;
+    win->questConnectionStatus = MainWindow::QuestConnectionStatus::Connecting;
 
-    questCommunicatorThread = new std::thread([&]()
+    win->questCommunicatorThread = new std::thread([&]()
         {
-            questCommunicatorThreadFunc();
+            win->questCommunicatorThreadFunc();
         }
     );
+}
+
+void ConnectQuestPage::onTimer()
+{
+    if(win->questConnectionStatus == MainWindow::QuestConnectionStatus::ConnectionFailed)
+    {
+        QMessageBox msgBox;
+        msgBox.setText("Can not connect to the quest...");
+        msgBox.exec();
+        win->cameraSelectPage->setPage();
+        /*questCommunicatorThread->join();
+        questCommunicatorThread = NULL;
+        questConnectionStatus = QuestConnectionStatus::NotConnected;
+        connectButton->setText("connect");
+        connectButton->setEnabled(true);*/
+    } else if(win->questConnectionStatus == MainWindow::QuestConnectionStatus::Connected) {
+        win->cameraSelectPage->setPage();
+    }
 }

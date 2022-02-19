@@ -1,9 +1,16 @@
 #include "mainwindow.h"
+#include "PostProcessingPage.h"
 
-void MainWindow::setPostProcessingPage()
+PostProcessingPage::PostProcessingPage(MainWindow *win)
+    :win(win)
 {
-    currentPageName = "postProcessing";
-    clearMainWidget();
+
+}
+
+void PostProcessingPage::setPage()
+{
+    win->currentPageName = MainWindow::PageName::postProcessing;
+    win->clearMainWidget();
 
     QVBoxLayout *layout = new QVBoxLayout();
     layout->setContentsMargins(100,100,100,300);
@@ -19,27 +26,27 @@ void MainWindow::setPostProcessingPage()
 
     layout->addWidget(postProcessingLabel);
     layout->addWidget(progressBar);
-    mainWidget->setLayout(layout);
+    win->mainWidget->setLayout(layout);
 
-    segmentationProcess = new QProcess(this);
-    segmentationProcess->setEnvironment( QProcess::systemEnvironment() );
-    segmentationProcess->setProcessChannelMode( QProcess::MergedChannels );
-    QString inputVideo = QString::fromStdString(recordedVideoFilename);
-    QString outputVideo = QString::fromStdString(record_folder + "/camVideo_mask.mp4");
-    segmentationProcess->start("python3", QStringList() << "humanSegmentation.py" << inputVideo << outputVideo);
+    win->segmentationProcess = new QProcess(this);
+    win->segmentationProcess->setEnvironment( QProcess::systemEnvironment() );
+    win->segmentationProcess->setProcessChannelMode( QProcess::MergedChannels );
+    QString inputVideo = QString::fromStdString(win->recordedVideoFilename);
+    QString outputVideo = QString::fromStdString(win->record_folder + "/camVideo_mask.mp4");
+    win->segmentationProcess->start("python3", QStringList() << "humanSegmentation.py" << inputVideo << outputVideo);
     //process->waitForStarted();
-    connect (segmentationProcess, SIGNAL(readyReadStandardOutput()), this, SLOT(processOutput()));
+    connect (win->segmentationProcess, SIGNAL(readyReadStandardOutput()), this, SLOT(processOutput()));
 }
 
-void MainWindow::processOutput()
+void PostProcessingPage::processOutput()
 {
-    qDebug() << segmentationProcess->readAllStandardOutput();
+    qDebug() << win->segmentationProcess->readAllStandardOutput();
 }
 
 
-void MainWindow::postProcessThreadFunc()
+void PostProcessingPage::postProcessThreadFunc()
 {
-    std::string timestampFilename = (record_folder+"/questVidTimestamp.txt");
+    std::string timestampFilename = (win->record_folder+"/questVidTimestamp.txt");
     FILE *timestampFile = fopen(timestampFilename.c_str(), "r");
     uint64_t firstTimestamp = 0, lastTimestamp = 0;
     printf("load timestamps\n");
@@ -61,7 +68,7 @@ void MainWindow::postProcessThreadFunc()
         timestampFile = NULL;
         libQuestMR::QuestVideoMngr mngr;
         libQuestMR::QuestVideoSourceFile videoSrc;
-        videoSrc.open((record_folder+"/questVid.questMRVideo").c_str());
+        videoSrc.open((win->record_folder+"/questVid.questMRVideo").c_str());
         mngr.attachSource(&videoSrc);
         mngr.setRecordedTimestampSource(timestampFilename.c_str());
         while(true)
@@ -78,8 +85,8 @@ void MainWindow::postProcessThreadFunc()
                 if(videoEncoder == NULL)
                 {
                     videoEncoder = new VideoEncoder();
-                    videoEncoder->open((record_folder+"/questVid_processed.h264").c_str(), img.size(), 30);
-                    timestampFile = fopen((record_folder+"/questVid_processedTimestamp.txt").c_str(), "w");
+                    videoEncoder->open((win->record_folder+"/questVid_processed.h264").c_str(), img.size(), 30);
+                    timestampFile = fopen((win->record_folder+"/questVid_processedTimestamp.txt").c_str(), "w");
                 }
                 postProcessVal = ((double)(timestamp - firstTimestamp)) / (lastTimestamp - firstTimestamp);
                 fprintf(timestampFile, "%llu\n", static_cast<unsigned long long>(timestamp));
@@ -92,4 +99,9 @@ void MainWindow::postProcessThreadFunc()
             fclose(timestampFile);
         }
     }
+}
+
+void PostProcessingPage::onTimer()
+{
+    progressBar->setValue((int)(100*postProcessVal));
 }
