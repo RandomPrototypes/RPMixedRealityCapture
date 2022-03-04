@@ -18,7 +18,7 @@
 #include "VideoEncoder.h"
 #include "QuestCommunicator.h"
 #include "QuestVideoMngr.h"
-#include "CameraInterface.h"
+#include <RPCameraInterface/CameraInterface.h>
 #include "Util.hpp"
 
 class CalibrationFrame
@@ -96,6 +96,8 @@ protected:
     std::string record_folder;
 
     int currentCameraEnumId = 0;
+    std::vector<std::shared_ptr<RPCameraInterface::CameraEnumerator> > listCameraEnumerator;
+
 
     volatile bool recording, recording_finished;
     std::string recordedVideoFilename, recordedVideoTimestampFilename;

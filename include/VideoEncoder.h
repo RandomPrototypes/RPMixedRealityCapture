@@ -22,7 +22,7 @@ public:
     bool write(const cv::Mat& img);
     void release();
 
-    AVCodec *codec;
+    const AVCodec *codec;
     AVCodecContext *codecContext = NULL;
     struct SwsContext *sws_context = NULL;
     AVPacket *pkt;

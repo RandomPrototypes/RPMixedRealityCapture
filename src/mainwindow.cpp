@@ -19,11 +19,12 @@
 #include <opencv2/opencv.hpp>
 #include "VideoInputMngr.h"
 #include "QuestCalibData.h"
-#include "CameraEnumeratorQt.h"
-#include "CameraInterfaceV4l2.h"
-#include "CameraInterfaceLibWebcam.h"
-#include "CameraInterfaceAndroid.h"
-#include "ImageFormatConverter.h"
+#include <RPCameraInterface/CameraEnumeratorQt.h>
+//#include <RPCameraInterface/CameraInterfaceV4l2.h>
+#include <RPCameraInterface/CameraInterfaceDShow.h>
+//#include <RPCameraInterface/CameraInterfaceLibWebcam.h>
+#include <RPCameraInterface/CameraInterfaceAndroid.h>
+#include <RPCameraInterface/ImageFormatConverter.h>
 
 #include "CalibrateCameraPosePage.h"
 #include "CalibrateWithChessboardPage.h"
@@ -40,10 +41,6 @@ using namespace RPCameraInterface;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    CameraMngr *cameraMngr = CameraMngr::getInstance();
-    //cameraMngr->registerEnumAndFactory(new CameraEnumeratorQt(), new CameraInterfaceFactoryV4L2());
-    cameraMngr->registerEnumAndFactory(new CameraEnumeratorLibWebcam(), new CameraInterfaceFactoryLibWebcam());
-    cameraMngr->registerEnumAndFactory(new CameraEnumeratorAndroid(), new CameraInterfaceFactoryAndroid());
     mainWidget = new QWidget();
 
     videoInput = new VideoInputMngr();
@@ -159,7 +156,7 @@ void MainWindow::videoThreadFunc(std::string cameraId)
     cap.set(cv::CAP_PROP_FRAME_WIDTH,1280);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT,720);*/
 
-    CameraInterface *cam = CameraMngr::getInstance()->listCameraEnumAndFactory[currentCameraEnumId].interfaceFactory->createInterface();
+    std::shared_ptr<CameraInterface> cam = getCameraInterface(listCameraEnumerator[currentCameraEnumId]->backend);
     if(!cam->open(cameraId))
     {
         qDebug() << cam->getErrorMsg().c_str();
@@ -169,7 +166,7 @@ void MainWindow::videoThreadFunc(std::string cameraId)
     int selectedFormat = -1;
     for(size_t i = 0; i < listFormats.size(); i++)
     {
-        if(listFormats[i].type == ImageType::MJPG && listFormats[i].width == 1920 && listFormats[i].height == 1080)
+        if(listFormats[i].type == ImageType::JPG && listFormats[i].width == 1920 && listFormats[i].height == 1080)
         {
             selectedFormat = i;
             break;
@@ -204,7 +201,7 @@ void MainWindow::videoThreadFunc(std::string cameraId)
     ImageFormat dstFormat;
     dstFormat.width = 1280;
     dstFormat.height = 720;
-    dstFormat.type = ImageType::BGR;
+    dstFormat.type = ImageType::BGR24;
     ImageFormatConverter converter(listFormats[selectedFormat], dstFormat);
 
     std::shared_ptr<ImageData> resultImg = std::make_shared<ImageData>();
@@ -268,7 +265,7 @@ void MainWindow::videoThreadFunc(std::string cameraId)
 
 void MainWindow::questThreadFunc()
 {
-    libQuestMR::QuestVideoSourceSocket videoSrc;
+    libQuestMR::QuestVideoSourceBufferedSocket videoSrc;
     videoSrc.Connect();
     questVideoMngr->attachSource(&videoSrc);
     bool was_recording = recording;

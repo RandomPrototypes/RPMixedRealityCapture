@@ -2,8 +2,7 @@
 #define CAMERASELECTPAGE_H
 
 #include "mainwindow.h"
-
-class CameraEnumerator;
+#include <RPCameraInterface/CameraInterface.h>
 
 class CameraSelectPage : public QObject
 {
@@ -12,8 +11,8 @@ public:
     CameraSelectPage(MainWindow *win);
 
     void setPage();
-    void refreshCameraComboBox(RPCameraInterface::CameraEnumerator *camEnumerator);
-    void setCameraParamBox(RPCameraInterface::CameraEnumerator *camEnumerator);
+    void refreshCameraComboBox(std::shared_ptr<RPCameraInterface::CameraEnumerator> camEnumerator);
+    void setCameraParamBox(std::shared_ptr<RPCameraInterface::CameraEnumerator> camEnumerator);
 public slots:
     void onClickSelectCameraButton();
     void onClickCameraButton(int i);

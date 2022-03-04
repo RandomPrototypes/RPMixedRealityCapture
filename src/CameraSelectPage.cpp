@@ -2,7 +2,6 @@
 #include "CameraSelectPage.h"
 #include "CalibrationOptionPage.h"
 #include <QRadioButton>
-#include "CameraInterface.h"
 using namespace RPCameraInterface;
 
 CameraSelectPage::CameraSelectPage(MainWindow *win)
@@ -28,13 +27,17 @@ void CameraSelectPage::setPage()
 
     QHBoxLayout *hlayout = new QHBoxLayout();
     layout->setContentsMargins(50, 50, 50, 200);
-    CameraMngr *cameraMngr = CameraMngr::getInstance();
-    for(size_t i = 0; i < cameraMngr->listCameraEnumAndFactory.size(); i++)
+    std::vector<CaptureBackend> availableBackends = getAvailableCaptureBackends();
+    win->listCameraEnumerator.clear();
+    for(size_t i = 0; i < availableBackends.size(); i++)
     {
-        std::string type = "&"+cameraMngr->listCameraEnumAndFactory[i].enumerator->cameraType;
+        std::shared_ptr<RPCameraInterface::CameraEnumerator> camEnumerator = getCameraEnumerator(availableBackends[i]);
+        int index = win->listCameraEnumerator.size();
+        win->listCameraEnumerator.push_back(camEnumerator);
+        std::string type = "&"+camEnumerator->cameraType;
         QRadioButton *cameraButton = new QRadioButton(tr(type.c_str()));
         hlayout->addWidget(cameraButton);
-        connect(cameraButton,&QRadioButton::clicked,[=](){onClickCameraButton(i);});
+        connect(cameraButton,&QRadioButton::clicked,[=](){onClickCameraButton(index);});
     }
 
     cameraParamLayout = new QVBoxLayout();
@@ -49,7 +52,7 @@ void CameraSelectPage::setPage()
     win->mainWidget->setLayout(layout);
 }
 
-void CameraSelectPage::refreshCameraComboBox(RPCameraInterface::CameraEnumerator *camEnumerator)
+void CameraSelectPage::refreshCameraComboBox(std::shared_ptr<RPCameraInterface::CameraEnumerator> camEnumerator)
 {
     listCameraCombo->clear();
     camEnumerator->detectCameras();
@@ -62,7 +65,7 @@ void CameraSelectPage::refreshCameraComboBox(RPCameraInterface::CameraEnumerator
 
 }
 
-void CameraSelectPage::setCameraParamBox(RPCameraInterface::CameraEnumerator *camEnumerator)
+void CameraSelectPage::setCameraParamBox(std::shared_ptr<RPCameraInterface::CameraEnumerator> camEnumerator)
 {
     clearLayout(cameraParamLayout);
 
@@ -131,9 +134,7 @@ void CameraSelectPage::setCameraParamBox(RPCameraInterface::CameraEnumerator *ca
 void CameraSelectPage::onClickCameraButton(int i)
 {
     win->currentCameraEnumId = i;
-    CameraMngr *cameraMngr = CameraMngr::getInstance();
-    RPCameraInterface::CameraEnumerator *camEnumerator = cameraMngr->listCameraEnumAndFactory[win->currentCameraEnumId].enumerator;
-    setCameraParamBox(camEnumerator);
+    setCameraParamBox(win->listCameraEnumerator[i]);
 }
 
 void CameraSelectPage::onClickSelectCameraButton()
