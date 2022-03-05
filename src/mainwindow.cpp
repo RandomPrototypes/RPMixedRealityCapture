@@ -19,11 +19,6 @@
 #include <opencv2/opencv.hpp>
 #include "VideoInputMngr.h"
 #include "QuestCalibData.h"
-#include <RPCameraInterface/CameraEnumeratorQt.h>
-//#include <RPCameraInterface/CameraInterfaceV4l2.h>
-#include <RPCameraInterface/CameraInterfaceDShow.h>
-//#include <RPCameraInterface/CameraInterfaceLibWebcam.h>
-#include <RPCameraInterface/CameraInterfaceAndroid.h>
 #include <RPCameraInterface/ImageFormatConverter.h>
 
 #include "CalibrateCameraPosePage.h"

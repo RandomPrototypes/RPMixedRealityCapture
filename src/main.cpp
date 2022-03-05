@@ -1,5 +1,4 @@
 #include "mainwindow.h"
-#include <RPCameraInterface/CameraInterfaceV4l2.h>
 
 #include "BufferedSocket.h"
 

@@ -18,7 +18,7 @@ set(EXTERNAL_INSTALL_LOCATION deps)
 FetchContent_Populate(
     BufferedSocket
     GIT_REPOSITORY https://github.com/RandomPrototypes/BufferedSocket.git
-    GIT_TAG 45c3d9e33f20aafa19ec4f03d39dcbc9c529726a
+    GIT_TAG 6feeef15136bd2157b144936619808db28cca51e
 )
 
 FetchContent_Populate(
@@ -30,7 +30,7 @@ FetchContent_Populate(
 FetchContent_Populate(
     libQuestMR
     GIT_REPOSITORY https://github.com/RandomPrototypes/libQuestMR.git
-    GIT_TAG 934077b3cd5130367b31ef537d8b35f25d951c5f
+    GIT_TAG 5a870e0dd7e9990f6a2b1c68da4471a297685d4c
 )
 
 FetchContent_Populate(
@@ -48,12 +48,12 @@ SET(tinyxml2 ${tinyxml2_SOURCE_DIR})
 
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets Multimedia REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Multimedia REQUIRED)
-find_package(OpenCV REQUIRED HINTS C:/opencv-4.5.5/release/install/x64/mingw/lib)
-find_package(RPCameraInterface REQUIRED HINTS C:/workspace/RPCameraInterface/install/lib/cmake/)
+find_package(OpenCV REQUIRED)
+find_package(RPCameraInterface REQUIRED)
 
 
 if(WIN32)
-   SET(FFMPEG_DIR "" CACHE STRING "ffmpeg dir" HINTS C:/ffmpeg5.0)
+   SET(FFMPEG_DIR "" CACHE STRING "ffmpeg dir")
    SET(FFMPEG_INCLUDE_DIR "" CACHE STRING "ffmpeg include dir")
    SET(FFMPEG_LIB_DIR "" CACHE STRING "ffmpeg lib dir")
    if(FFMPEG_DIR AND (NOT FFMPEG_INCLUDE_DIR))
@@ -66,15 +66,7 @@ if(WIN32)
    link_directories(${FFMPEG_LIB_DIR})
 else()
    find_package(PkgConfig REQUIRED)
-   pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET
-        libavdevice
-        libavfilter
-        libavformat
-        libavcodec
-        libswresample
-        libswscale
-        libavutil
-   )
+   pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET libavdevice libavfilter libavformat libavcodec libswresample libswscale libavutil)
 endif()
 
 set(PROJECT_SOURCES        
@@ -126,8 +118,7 @@ set(PROJECT_SOURCES
 )
 
 if(UNIX)
-set(PROJECT_SOURCES  ${PROJECT_SOURCES}
-)
+set(PROJECT_SOURCES  ${PROJECT_SOURCES})
 endif()
 
 message("include dir: ${RPCameraInterface_DIR}")
@@ -152,14 +143,11 @@ endif()
 
 target_link_libraries(RPMixedRealityCapture PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Multimedia ${OpenCV_LIBS})
 
-target_link_libraries(RPMixedRealityCapture PRIVATE
-        libavdevice
-        libavfilter
-        libavformat
-        libavcodec
-        libswresample
-        libswscale
-        libavutil)
+if(WIN32)
+   target_link_libraries(RPMixedRealityCapture PRIVATE libavdevice libavfilter libavformat libavcodec libswresample libswscale libavutil)
+else()
+   target_link_libraries(RPMixedRealityCapture PRIVATE PkgConfig::LIBAV)
+endif()
 
 target_link_libraries(RPMixedRealityCapture PRIVATE RPCameraInterface)
 
