@@ -18,20 +18,21 @@ void CalibrateWithChessboardPage::setPage()
     win->currentPageName = MainWindow::PageName::calibrateWithChessboard;
     win->clearMainWidget();
 
-    QVBoxLayout *layout = new QVBoxLayout();
-    layout->setContentsMargins(0,0,0,0);
+    QGridLayout *layout = new QGridLayout();
+    layout->setContentsMargins(100,500,100,20);
     //layout->setAlignment(Qt::AlignTop);
 
     QLabel *calibrationLabel = new QLabel;
     calibrationLabel->setText("calibration pattern: ");
+    layout->addWidget(calibrationLabel, 0, 2);
 
     QComboBox *patternTypeCombo = new QComboBox;
     patternTypeCombo->addItem("chessboard");
     /*patternTypeCombo->addItem("charuco");
     patternTypeCombo->addItem("circles");
     patternTypeCombo->addItem("assymetric circles");*/
+    layout->addWidget(patternTypeCombo, 0, 3);
 
-    QHBoxLayout *hlayout1 = new QHBoxLayout();
     QLabel *rowsLabel = new QLabel();
     rowsLabel->setText("Rows: ");
     rowsSpinBox = new QSpinBox;
@@ -50,12 +51,12 @@ void CalibrateWithChessboardPage::setPage()
     checkerWidthSpinBox->setRange(0, 99);
     checkerWidthSpinBox->setSingleStep(1);
     checkerWidthSpinBox->setValue(15);
-    hlayout1->addWidget(rowsLabel);
-    hlayout1->addWidget(rowsSpinBox);
-    hlayout1->addWidget(columnsLabel);
-    hlayout1->addWidget(columnsSpinBox);
-    hlayout1->addWidget(checkerWidthLabel);
-    hlayout1->addWidget(checkerWidthSpinBox);
+    layout->addWidget(rowsLabel, 1, 0);
+    layout->addWidget(rowsSpinBox, 1, 1);
+    layout->addWidget(columnsLabel, 1, 2);
+    layout->addWidget(columnsSpinBox, 1, 3);
+    layout->addWidget(checkerWidthLabel, 1, 4);
+    layout->addWidget(checkerWidthSpinBox, 1, 5);
 
 
 
@@ -64,11 +65,7 @@ void CalibrateWithChessboardPage::setPage()
     QPushButton *startCalibratingButton = new QPushButton("start calibration");
     startCalibratingButton->setMaximumWidth(300);
 
-    layout->addWidget(calibrationLabel);
-    layout->addWidget(patternTypeCombo);
-    layout->addLayout(hlayout1);
-
-    layout->addWidget(startCalibratingButton);
+    layout->addWidget(startCalibratingButton, 2, 2);
 
     win->mainWidget->setLayout(layout);
 
