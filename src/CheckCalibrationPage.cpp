@@ -1,5 +1,5 @@
 #include "mainwindow.h"
-#include "QuestCalibData.h"
+#include <libQuestMR/QuestCalibData.h>
 #include "CheckCalibrationPage.h"
 
 CheckCalibrationPage::CheckCalibrationPage(MainWindow *win)

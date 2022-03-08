@@ -18,7 +18,7 @@
 
 #include <opencv2/opencv.hpp>
 #include "VideoInputMngr.h"
-#include "QuestCalibData.h"
+#include <libQuestMR/QuestCalibData.h>
 #include <RPCameraInterface/ImageFormatConverter.h>
 
 #include "CalibrateCameraPosePage.h"
@@ -261,7 +261,7 @@ void MainWindow::videoThreadFunc(std::string cameraId)
 void MainWindow::questThreadFunc()
 {
     libQuestMR::QuestVideoSourceBufferedSocket videoSrc;
-    videoSrc.Connect();
+    videoSrc.Connect(questIpAddress);
     questVideoMngr->attachSource(&videoSrc);
     bool was_recording = recording;
     if(recording)
@@ -272,7 +272,7 @@ void MainWindow::questThreadFunc()
         {
             questVideoMngr->detachSource();
             videoSrc.Disconnect();
-            videoSrc.Connect();
+            videoSrc.Connect(questIpAddress);
             questVideoMngr->attachSource(&videoSrc);
             if(recording)
                 questVideoMngr->setRecording(record_folder.c_str(), "questVid");

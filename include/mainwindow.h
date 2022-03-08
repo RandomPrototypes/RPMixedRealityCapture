@@ -16,8 +16,8 @@
 #include "VideoInputMngr.h"
 #include "OpenCVWidget.h"
 #include "VideoEncoder.h"
-#include "QuestCommunicator.h"
-#include "QuestVideoMngr.h"
+#include <libQuestMR/QuestCommunicator.h>
+#include <libQuestMR/QuestVideoMngr.h>
 #include <RPCameraInterface/CameraInterface.h>
 #include "Util.hpp"
 
@@ -86,6 +86,8 @@ protected:
     VideoInputMngr *videoInput;
     VideoInputMngr *questInput;
     std::string cameraId;
+
+    std::string questIpAddress;
 
     //QHBoxLayout *hlayout;
 

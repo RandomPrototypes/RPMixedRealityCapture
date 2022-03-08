@@ -4,7 +4,7 @@
 #include "CalibrateCameraPosePage.h"
 #include "CheckCalibrationPage.h"
 
-#include "QuestCalibData.h"
+#include <libQuestMR/QuestCalibData.h>
 
 CalibrateCameraPosePage::CalibrateCameraPosePage(MainWindow *win)
     :win(win)

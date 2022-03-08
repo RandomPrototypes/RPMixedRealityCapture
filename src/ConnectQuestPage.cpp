@@ -46,7 +46,7 @@ void ConnectQuestPage::setPage()
 
 void ConnectQuestPage::onClickConnectButton()
 {
-    QString ipaddress = ipAddressField->text();
+    win->questIpAddress = ipAddressField->text().toStdString();
     connectButton->setText("connecting...");
     connectButton->setEnabled(false);
     win->questConnectionStatus = MainWindow::QuestConnectionStatus::Connecting;

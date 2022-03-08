@@ -1,6 +1,6 @@
 #include "mainwindow.h"
 #include <QFileDialog>
-#include "QuestCalibData.h"
+#include <libQuestMR/QuestCalibData.h>
 #include "CalibrateWithChessboardPage.h"
 #include "CalibrationOptionPage.h"
 #include "CheckCalibrationPage.h"
