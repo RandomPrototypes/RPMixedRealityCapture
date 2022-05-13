@@ -1,5 +1,9 @@
 #include "mainwindow.h"
 #include "PostProcessingPage.h"
+#include <RPCameraInterface/VideoEncoder.h>
+#include <RPCameraInterface/OpenCVConverter.h>
+
+
 
 PostProcessingPage::PostProcessingPage(MainWindow *win)
     :win(win)
@@ -64,33 +68,33 @@ void PostProcessingPage::postProcessThreadFunc()
     if(lastTimestamp > firstTimestamp)
     {
         printf("start processing\n");
-        VideoEncoder *videoEncoder = NULL;
+        std::shared_ptr<RPCameraInterface::VideoEncoder> videoEncoder;
         timestampFile = NULL;
-        libQuestMR::QuestVideoMngr mngr;
-        libQuestMR::QuestVideoSourceFile videoSrc;
-        videoSrc.open((win->record_folder+"/questVid.questMRVideo").c_str());
-        mngr.attachSource(&videoSrc);
-        mngr.setRecordedTimestampSource(timestampFilename.c_str());
+        std::shared_ptr<libQuestMR::QuestVideoMngr> mngr = libQuestMR::createQuestVideoMngr();
+        std::shared_ptr<libQuestMR::QuestVideoSourceFile> videoSrc;
+        videoSrc->open((win->record_folder+"/questVid.questMRVideo").c_str());
+        mngr->attachSource(videoSrc);
+        mngr->setRecordedTimestampSource(timestampFilename.c_str());
         while(true)
         {
-            if(!videoSrc.isValid())
+            if(!videoSrc->isValid())
                 break;
-            mngr.VideoTickImpl();
+            mngr->VideoTickImpl();
             uint64_t timestamp;
-            cv::Mat img = mngr.getMostRecentImg(&timestamp);
+            cv::Mat img = mngr->getMostRecentImg(&timestamp);
             printf("process %lu / %lu\n", timestamp - firstTimestamp, lastTimestamp - firstTimestamp);
             if(!img.empty())
             {
                 img = img(cv::Rect(0,0,img.cols/2,img.rows)).clone();
                 if(videoEncoder == NULL)
                 {
-                    videoEncoder = new VideoEncoder();
-                    videoEncoder->open((win->record_folder+"/questVid_processed.h264").c_str(), img.size(), 30);
+                    videoEncoder = RPCameraInterface::createVideoEncoder();
+                    videoEncoder->open((win->record_folder+"/questVid_processed.mp4").c_str(), img.rows, img.cols, 30);
                     timestampFile = fopen((win->record_folder+"/questVid_processedTimestamp.txt").c_str(), "w");
                 }
                 postProcessVal = ((double)(timestamp - firstTimestamp)) / (lastTimestamp - firstTimestamp);
                 fprintf(timestampFile, "%llu\n", static_cast<unsigned long long>(timestamp));
-                videoEncoder->write(img);
+                videoEncoder->write(RPCameraInterface::createImageDataFromMat(img, timestamp, false));
             }
         }
         if(videoEncoder != NULL)

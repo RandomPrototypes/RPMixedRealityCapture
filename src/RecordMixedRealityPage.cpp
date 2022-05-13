@@ -43,6 +43,18 @@ void RecordMixedRealityPage::setPage()
     win->mainWidget->setLayout(layout);
 
     connect(startRecordingButton,SIGNAL(clicked()),this,SLOT(onClickStartRecordingButton()));
+
+    win->videoInput->videoThread = new std::thread([&]()
+        {
+            win->videoThreadFunc(win->cameraId);
+        }
+    );
+
+    win->questInput->videoThread = new std::thread([&]()
+        {
+            win->questThreadFunc();
+        }
+    );
 }
 
 void RecordMixedRealityPage::onClickStartRecordingButton()
@@ -66,3 +78,13 @@ void RecordMixedRealityPage::onClickStartRecordingButton()
         });
     }
 }
+
+void RecordMixedRealityPage::onTimer()
+{
+    if(win->videoInput->hasNewImg)
+    {
+        cv::Mat img = win->videoInput->getImgCopy();
+        win->camPreviewWidget->setImg(img);
+    }
+}
+

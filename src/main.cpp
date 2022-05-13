@@ -1,6 +1,6 @@
 #include "mainwindow.h"
 
-#include "BufferedSocket.h"
+#include <BufferedSocket/BufferedSocket.h>
 
 #include <QApplication>
 
@@ -17,8 +17,6 @@ enum AndroidCameraCmd
 
 int main(int argc, char *argv[])
 {
-    BufferedSocket::startup();
-
     /*BufferedSocket bufferedSock;
 
     if (!bufferedSock.connect("192.168.10.101", 25600))
@@ -49,7 +47,7 @@ int main(int argc, char *argv[])
         int64_t size = bufferedSock.readInt64();
         qDebug() << size << " timestamp " << timestamp;
 
-        std::shared_ptr<ImageData> img = std::make_shared<ImageData>();
+        std::shared_ptr<ImageData> img = RPCameraInterface::createImageData();
         img->imageFormat.type = ImageType::MJPG;
         img->imageFormat.width = 720;
         img->imageFormat.height = 480;
@@ -63,7 +61,7 @@ int main(int argc, char *argv[])
         dstFormat.type = ImageType::BGR;
         ImageFormatConverter converter(img->imageFormat, dstFormat);
 
-        std::shared_ptr<ImageData> img2 = std::make_shared<ImageData>();
+        std::shared_ptr<ImageData> img2 = RPCameraInterface::createImageData();
 
         converter.convertImage(img, img2);
         cv::Mat resultImg2(img2->imageFormat.height, img2->imageFormat.width, CV_8UC3, img2->data);
@@ -158,5 +156,4 @@ int main(int argc, char *argv[])
     }
     resultImg.freeData();*/
 
-    BufferedSocket::cleanup();
 }

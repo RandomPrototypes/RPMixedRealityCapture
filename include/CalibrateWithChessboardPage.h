@@ -38,6 +38,7 @@ private:
     };
 
     CalibState state;
+    uint32_t currentTriggerCount = 0;
 };
 
 #endif // CALIBRATEWITHCHESSBOARDPAGE_H

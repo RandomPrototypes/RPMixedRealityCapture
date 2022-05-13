@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "CameraSelectPage.h"
 #include "CalibrationOptionPage.h"
+#include "RecordMixedRealityPage.h"
 #include <QRadioButton>
 using namespace RPCameraInterface;
 
@@ -34,7 +35,7 @@ void CameraSelectPage::setPage()
         std::shared_ptr<RPCameraInterface::CameraEnumerator> camEnumerator = getCameraEnumerator(availableBackends[i]);
         int index = win->listCameraEnumerator.size();
         win->listCameraEnumerator.push_back(camEnumerator);
-        std::string type = "&"+camEnumerator->cameraType;
+        std::string type = std::string("&")+camEnumerator->getCameraType();
         QRadioButton *cameraButton = new QRadioButton(tr(type.c_str()));
         hlayout->addWidget(cameraButton);
         connect(cameraButton,&QRadioButton::clicked,[=](){onClickCameraButton(index);});
@@ -60,7 +61,7 @@ void CameraSelectPage::refreshCameraComboBox(std::shared_ptr<RPCameraInterface::
     listCameraIds.clear();
     for (size_t i = 0; i < camEnumerator->count(); i++) {
         listCameraIds.push_back(camEnumerator->getCameraId(i));
-        listCameraCombo->addItem(QString(camEnumerator->getCameraName(i).c_str()));
+        listCameraCombo->addItem(QString(camEnumerator->getCameraName(i)));
     }
 
 }
@@ -72,24 +73,24 @@ void CameraSelectPage::setCameraParamBox(std::shared_ptr<RPCameraInterface::Came
     QHBoxLayout *cameraSelectLayout = new QHBoxLayout();
     cameraSelectLayout->setContentsMargins(10,50,10,50);
 
-    if(camEnumerator->listRequiredField.size() > 0)
+    if(camEnumerator->getNbParamField() > 0)
     {
         QHBoxLayout *hLayout1 = new QHBoxLayout();
         QVBoxLayout *vLayout1 = new QVBoxLayout();
-        for(size_t i = 0; i < camEnumerator->listRequiredField.size(); i++)
+        for(size_t i = 0; i < camEnumerator->getNbParamField(); i++)
         {
-            CameraEnumeratorField& field = camEnumerator->listRequiredField[i];
+            CameraEnumeratorField* field = camEnumerator->getParamField(i);
             QHBoxLayout *hLayout2 = new QHBoxLayout();
             QLabel *textLabel = new QLabel;
-            textLabel->setText((field.text+": ").c_str());
+            textLabel->setText((std::string(field->getText())+": ").c_str());
             hLayout2->addWidget(textLabel);
-            if(field.type == "text")
+            if(!strcmp(field->getType(), "text"))
             {
                 QLineEdit *lineEdit = new QLineEdit();
-                lineEdit->setText(field.value.c_str());
+                lineEdit->setText(field->getValue());
                 lineEdit->setContentsMargins(10,30,10,30);
 
-                field.extra_param = lineEdit;
+                field->setExtraParam(lineEdit);
 
                 hLayout2->addWidget(lineEdit);
             }
@@ -99,11 +100,11 @@ void CameraSelectPage::setCameraParamBox(std::shared_ptr<RPCameraInterface::Came
         QPushButton *refreshButton = new QPushButton("refresh");
         connect(refreshButton,&QPushButton::clicked,[=]()
         {
-            for(size_t i = 0; i < camEnumerator->listRequiredField.size(); i++)
+            for(size_t i = 0; i < camEnumerator->getNbParamField(); i++)
             {
-                CameraEnumeratorField& field = camEnumerator->listRequiredField[i];
-                if(field.type == "text")
-                    field.value = ((QLineEdit*)field.extra_param)->text().toStdString();
+                CameraEnumeratorField* field = camEnumerator->getParamField(i);
+                if(!strcmp(field->getType(), "text"))
+                    field->setValue(((QLineEdit*)field->getExtraParam())->text().toStdString().c_str());
             }
             refreshCameraComboBox(camEnumerator);
         });
@@ -141,11 +142,9 @@ void CameraSelectPage::onClickSelectCameraButton()
 {
     win->cameraId = listCameraIds[listCameraCombo->currentIndex()];
 
-    win->videoInput->videoThread = new std::thread([&]()
-        {
-            win->videoThreadFunc(win->cameraId);
-        }
-    );
-    win->calibrationOptionPage->setPage();
-    //setCameraPreviewPage();
+    if(win->isCalibrationSection)
+        win->calibrationOptionPage->setPage();
+    else {
+        win->recordMixedRealityPage->setPage();
+    }
 }

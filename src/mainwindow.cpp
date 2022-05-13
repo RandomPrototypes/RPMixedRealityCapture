@@ -20,7 +20,10 @@
 #include "VideoInputMngr.h"
 #include <libQuestMR/QuestCalibData.h>
 #include <RPCameraInterface/ImageFormatConverter.h>
+#include <RPCameraInterface/VideoEncoder.h>
+#include <RPCameraInterface/OpenCVConverter.h>
 
+#include "FirstMenuPage.h"
 #include "CalibrateCameraPosePage.h"
 #include "CalibrateWithChessboardPage.h"
 #include "CalibrationOptionPage.h"
@@ -41,8 +44,9 @@ MainWindow::MainWindow(QWidget *parent)
     videoInput = new VideoInputMngr();
     questInput = new VideoInputMngr();
 
-    questVideoMngr = new libQuestMR::QuestVideoMngr();
+    questVideoMngr = libQuestMR::createQuestVideoMngr();
 
+    questCom = libQuestMR::createQuestCommunicator();
     questComThreadData = NULL;
 
     camPreviewWidget = NULL;
@@ -56,6 +60,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     setCentralWidget(mainWidget);
 
+    firstMenuPage = new FirstMenuPage(this);
     calibrateWithChessboardPage = new CalibrateWithChessboardPage(this);
     calibrateCameraPosePage = new CalibrateCameraPosePage(this);
     calibrationOptionPage = new CalibrationOptionPage(this);
@@ -79,7 +84,6 @@ MainWindow::~MainWindow()
     {
         questComThreadData->setFinishedVal(true);
         questCommunicatorThread->join();
-        delete questComThreadData;
         delete questCommunicatorThread;
     }
 }
@@ -130,14 +134,14 @@ void MainWindow::clearMainWidget()
 
 void MainWindow::questCommunicatorThreadFunc()
 {
-    if(!questCom.connect("192.168.10.105", 25671))
+    if(!questCom->connect(questIpAddress.c_str(), 25671))
     {
         questConnectionStatus = QuestConnectionStatus::ConnectionFailed;
         return ;
     }
     questConnectionStatus = QuestConnectionStatus::Connected;
-    questComThreadData = new libQuestMR::QuestCommunicatorThreadData(&questCom);
-    libQuestMR::QuestCommunicatorThreadFunc(questComThreadData);
+    questComThreadData = libQuestMR::createQuestCommunicatorThreadData(questCom);
+    libQuestMR::QuestCommunicatorThreadFunc(questComThreadData.get());
 }
 
 void MainWindow::videoThreadFunc(std::string cameraId)
@@ -151,13 +155,13 @@ void MainWindow::videoThreadFunc(std::string cameraId)
     cap.set(cv::CAP_PROP_FRAME_WIDTH,1280);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT,720);*/
 
-    std::shared_ptr<CameraInterface> cam = getCameraInterface(listCameraEnumerator[currentCameraEnumId]->backend);
-    if(!cam->open(cameraId))
+    std::shared_ptr<CameraInterface> cam = getCameraInterface(listCameraEnumerator[currentCameraEnumId]->getBackend());
+    if(!cam->open(cameraId.c_str()))
     {
-        qDebug() << cam->getErrorMsg().c_str();
+        qDebug() << cam->getErrorMsg();
         return ;
     }
-    std::vector<ImageFormat> listFormats = cam->getAvailableFormats();
+    std::vector<ImageFormat> listFormats = cam->getListAvailableFormat();
     int selectedFormat = -1;
     for(size_t i = 0; i < listFormats.size(); i++)
     {
@@ -175,21 +179,22 @@ void MainWindow::videoThreadFunc(std::string cameraId)
 
 
     VideoContainerType videoContainerType = VideoContainerType::NONE;
-    std::vector<VideoContainerType> listContainers = cam->getAvailableVideoContainer();
+    std::vector<VideoContainerType> listContainers = cam->getListAvailableVideoContainer();
     if(listContainers.size() > 0) {
         videoContainerType = listContainers[0];
         cam->selectVideoContainer(videoContainerType);
     }
+    qDebug() << "start capturing";
     if(!cam->startCapturing())
     {
-        qDebug() << cam->getErrorMsg().c_str();
+        qDebug() << cam->getErrorMsg();
         return ;
     }
 
     bool inDeviceRecording = cam->hasRecordingCapability();
     bool recordingStarted = false;
 
-    VideoEncoder *videoEncoder = NULL;
+    std::shared_ptr<RPCameraInterface::VideoEncoder> videoEncoder;
 
     FILE *timestampFile = NULL;
 
@@ -199,14 +204,14 @@ void MainWindow::videoThreadFunc(std::string cameraId)
     dstFormat.type = ImageType::BGR24;
     ImageFormatConverter converter(listFormats[selectedFormat], dstFormat);
 
-    std::shared_ptr<ImageData> resultImg = std::make_shared<ImageData>();
+    std::shared_ptr<ImageData> resultImg = RPCameraInterface::createImageData();
 
     while(!videoInput->closed)
     {
         std::shared_ptr<ImageData> camImg = cam->getNewFrame(true);
-        uint64_t timestamp = camImg->timestamp;
+        uint64_t timestamp = camImg->getTimestamp();
         converter.convertImage(camImg, resultImg);
-        cv::Mat img(resultImg->imageFormat.height, resultImg->imageFormat.width, CV_8UC3, resultImg->data);
+        cv::Mat img(resultImg->getImageFormat().height, resultImg->getImageFormat().width, CV_8UC3, resultImg->getDataPtr());
         //cap >> img;
         if(img.empty())
             break;
@@ -221,14 +226,14 @@ void MainWindow::videoThreadFunc(std::string cameraId)
                     recordedVideoTimestampFilename = record_folder+"/camVideoTimestamp.txt";
                     recordedVideoFilename = record_folder+"/camVideo.h264";
                     timestampFile = fopen(recordedVideoTimestampFilename.c_str(), "w");
-                    videoEncoder = new VideoEncoder();
-                    videoEncoder->open(recordedVideoFilename.c_str(), cv::Size(1280,720), 30);
+                    videoEncoder = RPCameraInterface::createVideoEncoder();
+                    videoEncoder->open(recordedVideoFilename.c_str(), 720, 1280, 30);
                 }
                 recordingStarted = true;
             }
             if(videoEncoder != NULL){
                 fprintf(timestampFile, "%llu\n", static_cast<unsigned long long>(timestamp));
-                videoEncoder->write(img);
+                videoEncoder->write(RPCameraInterface::createImageDataFromMat(img, timestamp, false));
             }
         } else if(recordingStarted) {
             if(cam->hasRecordingCapability()) {
@@ -237,7 +242,7 @@ void MainWindow::videoThreadFunc(std::string cameraId)
                 if(videoContainerType == VideoContainerType::MP4)
                     recordedVideoFilename += ".mp4";
                 qDebug() << "stop recording and save to file: " << recordedVideoFilename.c_str();
-                cam->stopRecordingAndSaveToFile(recordedVideoFilename, recordedVideoTimestampFilename);
+                cam->stopRecordingAndSaveToFile(recordedVideoFilename.c_str(), recordedVideoTimestampFilename.c_str());
             } else {
                 fclose(timestampFile);
                 timestampFile = NULL;
@@ -260,9 +265,9 @@ void MainWindow::videoThreadFunc(std::string cameraId)
 
 void MainWindow::questThreadFunc()
 {
-    libQuestMR::QuestVideoSourceBufferedSocket videoSrc;
-    videoSrc.Connect(questIpAddress);
-    questVideoMngr->attachSource(&videoSrc);
+    std::shared_ptr<libQuestMR::QuestVideoSourceBufferedSocket> videoSrc = libQuestMR::createQuestVideoSourceBufferedSocket();
+    videoSrc->Connect(questIpAddress.c_str());
+    questVideoMngr->attachSource(videoSrc);
     bool was_recording = recording;
     if(recording)
         questVideoMngr->setRecording(record_folder.c_str(), "questVid");
@@ -271,9 +276,9 @@ void MainWindow::questThreadFunc()
         if(was_recording != recording)
         {
             questVideoMngr->detachSource();
-            videoSrc.Disconnect();
-            videoSrc.Connect(questIpAddress);
-            questVideoMngr->attachSource(&videoSrc);
+            videoSrc->Disconnect();
+            videoSrc->Connect(questIpAddress.c_str());
+            questVideoMngr->attachSource(videoSrc);
             if(recording)
                 questVideoMngr->setRecording(record_folder.c_str(), "questVid");
             was_recording = recording;
@@ -287,7 +292,7 @@ void MainWindow::questThreadFunc()
         }
     }
     questVideoMngr->detachSource();
-    videoSrc.Disconnect();
+    videoSrc->Disconnect();
 }
 
 void MainWindow::onTimer()
@@ -306,6 +311,8 @@ void MainWindow::onTimer()
         checkCalibrationPage->onTimer();
     else if(currentPageName == PageName::connectToQuest)
         connectQuestPage->onTimer();
+    else if(currentPageName == PageName::recordMixedReality)
+        recordMixedRealityPage->onTimer();
     else if(currentPageName == PageName::postProcessing)
         postProcessingPage->onTimer();
 
@@ -318,7 +325,7 @@ void MainWindow::onTimer()
 
 void MainWindow::onClickStartButton()
 {
-    connectQuestPage->setPage();
+    firstMenuPage->setPage();
 }
 
 void MainWindow::onClickPreviewWidget()

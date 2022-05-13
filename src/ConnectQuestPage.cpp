@@ -33,7 +33,7 @@ void ConnectQuestPage::setPage()
     ipAddressLayout->addWidget(ipAddressLabel);
     ipAddressLayout->addWidget(ipAddressField);
 
-    connectButton = new QPushButton("connect");
+    connectButton = new QPushButton(win->isCalibrationSection ? "connect" : "next");
 
     layout->addWidget(textLabel,Qt::AlignCenter);
     layout->addLayout(ipAddressLayout);
@@ -47,15 +47,19 @@ void ConnectQuestPage::setPage()
 void ConnectQuestPage::onClickConnectButton()
 {
     win->questIpAddress = ipAddressField->text().toStdString();
-    connectButton->setText("connecting...");
-    connectButton->setEnabled(false);
-    win->questConnectionStatus = MainWindow::QuestConnectionStatus::Connecting;
+    if(win->isCalibrationSection) {
+        connectButton->setText("connecting...");
+        connectButton->setEnabled(false);
+        win->questConnectionStatus = MainWindow::QuestConnectionStatus::Connecting;
 
-    win->questCommunicatorThread = new std::thread([&]()
-        {
-            win->questCommunicatorThreadFunc();
-        }
-    );
+        win->questCommunicatorThread = new std::thread([&]()
+            {
+                win->questCommunicatorThreadFunc();
+            }
+        );
+    } else {
+        win->cameraSelectPage->setPage();
+    }
 }
 
 void ConnectQuestPage::onTimer()

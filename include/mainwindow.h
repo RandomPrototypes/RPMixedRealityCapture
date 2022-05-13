@@ -15,7 +15,6 @@
 #include <opencv2/opencv.hpp>
 #include "VideoInputMngr.h"
 #include "OpenCVWidget.h"
-#include "VideoEncoder.h"
 #include <libQuestMR/QuestCommunicator.h>
 #include <libQuestMR/QuestVideoMngr.h>
 #include <RPCameraInterface/CameraInterface.h>
@@ -31,6 +30,7 @@ public:
     std::vector<cv::Point2f> corners;
 };
 
+class FirstMenuPage;
 class CalibrateWithChessboardPage;
 class CalibrateCameraPosePage;
 class CalibrationOptionPage;
@@ -70,6 +70,7 @@ private slots:
     void onClickPreviewWidget();
     void onTimer();
 protected:
+    friend class FirstMenuPage;
     friend class CalibrateWithChessboardPage;
     friend class CalibrateCameraPosePage;
     friend class CalibrationOptionPage;
@@ -93,7 +94,7 @@ protected:
 
     QLabel *instructionLabel;
 
-    libQuestMR::QuestVideoMngr *questVideoMngr;
+    std::shared_ptr<libQuestMR::QuestVideoMngr> questVideoMngr;
 
     std::string record_folder;
 
@@ -108,8 +109,8 @@ protected:
 
     std::thread *questCommunicatorThread;
     std::thread *postProcessingThread = NULL;
-    libQuestMR::QuestCommunicator questCom;
-    libQuestMR::QuestCommunicatorThreadData *questComThreadData;
+    std::shared_ptr<libQuestMR::QuestCommunicator> questCom;
+    std::shared_ptr<libQuestMR::QuestCommunicatorThreadData> questComThreadData;
 
     std::vector<CalibrationFrame> listCalibrationFrames;
     int currentCalibrationFrame;
@@ -126,6 +127,7 @@ protected:
     enum class PageName
     {
         frontPage,
+        firstMenuPage,
         recalibratePose,
         calibrateWithChessboard,
         checkCalibration,
@@ -138,6 +140,9 @@ protected:
     };
     PageName currentPageName;
 
+    bool isCalibrationSection;
+
+    FirstMenuPage *firstMenuPage;
     CalibrateWithChessboardPage *calibrateWithChessboardPage;
     CalibrateCameraPosePage *calibrateCameraPosePage;
     CalibrationOptionPage *calibrationOptionPage;

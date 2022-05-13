@@ -16,22 +16,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(EXTERNAL_INSTALL_LOCATION deps)
 
 FetchContent_Populate(
-    BufferedSocket
-    GIT_REPOSITORY https://github.com/RandomPrototypes/BufferedSocket.git
-    GIT_TAG 6feeef15136bd2157b144936619808db28cca51e
-)
-
-FetchContent_Populate(
     tinyxml2
     GIT_REPOSITORY https://github.com/leethomason/tinyxml2.git
     GIT_TAG 1dee28e51f9175a31955b9791c74c430fe13dc82
 )
 
-SET(BufferedSocket ${bufferedsocket_SOURCE_DIR})
-SET(RPCameraInterface ${rpcamerainterface_SOURCE_DIR})
-SET(libQuestMR ${libquestmr_SOURCE_DIR})
-SET(tinyxml2 ${tinyxml2_SOURCE_DIR})
+find_package(BufferedSocket REQUIRED)
+message("BufferedSocket dir: ${BufferedSocket_DIR}")
+set(BufferedSocket_INCLUDE_DIR ${BufferedSocket_DIR}/../../../include)
 
+SET(tinyxml2 ${tinyxml2_SOURCE_DIR})
 
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets Multimedia REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Multimedia REQUIRED)
@@ -39,27 +33,10 @@ find_package(OpenCV REQUIRED)
 find_package(RPCameraInterface REQUIRED)
 find_package(libQuestMR REQUIRED)
 
-
-if(WIN32)
-   SET(FFMPEG_DIR "" CACHE STRING "ffmpeg dir")
-   SET(FFMPEG_INCLUDE_DIR "" CACHE STRING "ffmpeg include dir")
-   SET(FFMPEG_LIB_DIR "" CACHE STRING "ffmpeg lib dir")
-   if(FFMPEG_DIR AND (NOT FFMPEG_INCLUDE_DIR))
-      set(FFMPEG_INCLUDE_DIR ${FFMPEG_DIR}/include CACHE STRING "ffmpeg include dir" FORCE)
-   endif()
-   if(FFMPEG_DIR AND (NOT FFMPEG_LIB_DIR))
-      set(FFMPEG_LIB_DIR ${FFMPEG_DIR}/lib CACHE STRING "ffmpeg lib dir" FORCE)
-   endif()
-   include_directories(${FFMPEG_INCLUDE_DIR})
-   link_directories(${FFMPEG_LIB_DIR})
-else()
-   find_package(PkgConfig REQUIRED)
-   pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET libavdevice libavfilter libavformat libavcodec libswresample libswscale libavutil)
-endif()
-
 set(PROJECT_SOURCES
         include/mainwindow.h
         include/Util.hpp
+        include/FirstMenuPage.h
         include/ConnectQuestPage.h
         include/CameraPreviewPage.h
         include/CameraSelectPage.h
@@ -71,6 +48,7 @@ set(PROJECT_SOURCES
         include/CheckCalibrationPage.h
         src/main.cpp
         src/mainwindow.cpp
+        src/FirstMenuPage.cpp
         src/ConnectQuestPage.cpp
         src/PostProcessingPage.cpp
         src/CameraSelectPage.cpp
@@ -85,10 +63,6 @@ set(PROJECT_SOURCES
         src/VideoInputMngr.cpp
         include/OpenCVWidget.h
         src/OpenCVWidget.cpp
-        include/VideoEncoder.h
-        src/VideoEncoder.cpp
-        ${BufferedSocket}/BufferedSocket.h
-        ${BufferedSocket}/BufferedSocket.cpp
         ${tinyxml2}/tinyxml2.h
         ${tinyxml2}/tinyxml2.cpp
 )
@@ -102,7 +76,7 @@ set(RPCameraInterface_INCLUDE_DIR ${RPCameraInterface_DIR}/../../../include)
 message("libQuestMR include dir: ${libQuestMR_DIR}")
 set(libQuestMR_INCLUDE_DIR ${libQuestMR_DIR}/../../../include)
 
-include_directories(include ${libQuestMR}/include ${tinyxml2}  ${RPCameraInterface_INCLUDE_DIR} ${libQuestMR_INCLUDE_DIR} ${BufferedSocket})
+include_directories(include ${libQuestMR}/include ${RPCameraInterface_INCLUDE_DIR} ${libQuestMR_INCLUDE_DIR} ${BufferedSocket_INCLUDE_DIR} ${tinyxml2})
 
 if(QT_VERSION_MAJOR GREATER_EQUAL 6)
     qt_add_executable(RPMixedRealityCapture
@@ -121,13 +95,7 @@ endif()
 
 target_link_libraries(RPMixedRealityCapture PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Multimedia ${OpenCV_LIBS})
 
-if(WIN32)
-   target_link_libraries(RPMixedRealityCapture PRIVATE libavdevice libavfilter libavformat libavcodec libswresample libswscale libavutil)
-else()
-   target_link_libraries(RPMixedRealityCapture PRIVATE PkgConfig::LIBAV)
-endif()
-
-target_link_libraries(RPMixedRealityCapture PRIVATE RPCameraInterface libQuestMR)
+target_link_libraries(RPMixedRealityCapture PRIVATE BufferedSocket RPCameraInterface libQuestMR)
 
 set_target_properties(RPMixedRealityCapture PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com

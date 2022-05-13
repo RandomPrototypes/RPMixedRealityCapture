@@ -45,6 +45,8 @@ void CalibrateCameraPosePage::setPage()
     connect(captureFrameButton,SIGNAL(clicked()),this,SLOT(onClickCaptureFrameButton()));
     connect(nextButton,SIGNAL(clicked()),this,SLOT(onClickAnnotateCalibFrameButton()));
     connect(win->camPreviewWidget,SIGNAL(clicked()),this,SLOT(onClickPreviewWidget()));
+
+    currentTriggerCount = win->questComThreadData->getTriggerCount();
 }
 
 void CalibrateCameraPosePage::capturePoseCalibFrame()
@@ -97,11 +99,11 @@ void CalibrateCameraPosePage::onTimer()
         if(win->videoInput->hasNewImg)
             win->camPreviewWidget->setImg(win->videoInput->getImgCopy());
 
-        if(win->questComThreadData != NULL && win->questComThreadData->getTriggerVal())
+        if(win->questComThreadData != NULL && win->questComThreadData->getTriggerCount() > currentTriggerCount)
         {
             qDebug() << "trigger";
             capturePoseCalibFrame();
-            win->questComThreadData->setTriggerVal(false);
+            currentTriggerCount = win->questComThreadData->getTriggerCount();
         }
     } else if(state == CalibState::annotate) {
         if(win->currentCalibrationFrame < win->listCalibrationFrames.size())
@@ -121,8 +123,8 @@ void CalibrateCameraPosePage::onClickPreviewWidget()
         win->listCalibrationFrames[win->currentCalibrationFrame].rightControllerImgPos = win->camPreviewWidget->localToImgPos(win->camPreviewWidget->mousePos);
         if(win->currentCalibrationFrame + 1 == win->listCalibrationFrames.size())
         {
-            std::string calibDataStr = win->questComThreadData->getCalibData();
-            if(!calibDataStr.empty())
+            auto calibDataStr = win->questComThreadData->getCalibData();
+            if(calibDataStr.size() > 0)
             {
                 libQuestMR::QuestCalibData calibData;
                 calibData.loadXMLString(calibDataStr.c_str());

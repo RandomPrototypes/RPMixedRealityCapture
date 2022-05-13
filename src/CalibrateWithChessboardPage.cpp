@@ -113,6 +113,9 @@ void CalibrateWithChessboardPage::onClickStartCalibration()
     win->record_folder = "output/calib"+getCurrentDateTimeStr();
     QDir().mkdir(win->record_folder.c_str());
     win->recording = true;
+
+    currentTriggerCount = win->questComThreadData->getTriggerCount();
+
 }
 
 void CalibrateWithChessboardPage::onClickCaptureFrame()
@@ -158,11 +161,11 @@ void CalibrateWithChessboardPage::onTimer()
             cv::drawChessboardCorners(img, boardSize, cv::Mat(corners), found);
             win->camPreviewWidget->setImg(img);
         }
-        if(win->questComThreadData != NULL && win->questComThreadData->getTriggerVal())
+        if(win->questComThreadData != NULL && win->questComThreadData->getTriggerCount() > currentTriggerCount)
         {
             qDebug() << "trigger";
             captureFrame();
-            win->questComThreadData->setTriggerVal(false);
+            currentTriggerCount = win->questComThreadData->getTriggerCount();
         }
     } else if(state == CalibState::calibrate) {
         if(win->recording_finished) {

@@ -29,6 +29,7 @@ private:
     };
 
     CalibState state;
+    uint32_t currentTriggerCount = 0;
 };
 
 #endif // CALIBRATECAMERAPOSEPAGE_H

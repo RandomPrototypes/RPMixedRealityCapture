@@ -34,7 +34,7 @@ void CheckCalibrationPage::onTimer()
     {
         cv::Mat img = win->videoInput->getImgCopy();
 
-        std::string calibDataStr = win->questComThreadData->getCalibData();
+        std::string calibDataStr = win->questComThreadData->getCalibData().str();
         if(!calibDataStr.empty())
         {
             libQuestMR::QuestCalibData calibData;

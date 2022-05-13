@@ -82,10 +82,5 @@ void CalibrationOptionPage::onClickRecalibratePoseButton()
 
 void CalibrationOptionPage::onClickRecordMixedRealityButton()
 {
-    win->questInput->videoThread = new std::thread([&]()
-        {
-            win->questThreadFunc();
-        }
-    );
     win->recordMixedRealityPage->setPage();
 }
