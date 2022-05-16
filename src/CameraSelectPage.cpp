@@ -63,7 +63,26 @@ void CameraSelectPage::refreshCameraComboBox(std::shared_ptr<RPCameraInterface::
         listCameraIds.push_back(camEnumerator->getCameraId(i));
         listCameraCombo->addItem(QString(camEnumerator->getCameraName(i)));
     }
+    refreshCameraFormatComboBox();
+}
 
+void CameraSelectPage::refreshCameraFormatComboBox()
+{
+    listCameraFormatCombo->clear();
+    if(listCameraCombo->currentIndex() >= 0 && listCameraCombo->currentIndex() < listCameraIds.size()) {
+        std::shared_ptr<CameraInterface> cam = getCameraInterface(win->listCameraEnumerator[win->currentCameraEnumId]->getBackend());
+        if(!cam->open(listCameraIds[listCameraCombo->currentIndex()].c_str()))
+        {
+            qDebug() << cam->getErrorMsg();
+            return ;
+        }
+        std::vector<ImageFormat> listFormats = cam->getListAvailableFormat();
+        for (size_t i = 0; i < listFormats.size(); i++) {
+            std::string format = std::to_string(listFormats[i].width) + "x" + std::to_string(listFormats[i].height) + " ("+toString(listFormats[i].type).c_str()+")";
+            listCameraFormatCombo->addItem(QString(format.c_str()));
+        }
+        cam->close();
+    }
 }
 
 void CameraSelectPage::setCameraParamBox(std::shared_ptr<RPCameraInterface::CameraEnumerator> camEnumerator)
@@ -72,6 +91,10 @@ void CameraSelectPage::setCameraParamBox(std::shared_ptr<RPCameraInterface::Came
 
     QHBoxLayout *cameraSelectLayout = new QHBoxLayout();
     cameraSelectLayout->setContentsMargins(10,50,10,50);
+
+    QHBoxLayout *cameraSelectFormatLayout = new QHBoxLayout();
+    cameraSelectFormatLayout->setContentsMargins(10,50,10,50);
+
 
     if(camEnumerator->getNbParamField() > 0)
     {
@@ -113,29 +136,47 @@ void CameraSelectPage::setCameraParamBox(std::shared_ptr<RPCameraInterface::Came
     }
 
     QLabel *cameraLabel = new QLabel;
-    cameraLabel->setText("camera: ");
+    cameraLabel->setText("Camera: ");
 
     listCameraCombo = new QComboBox;
 
-    refreshCameraComboBox(camEnumerator);
+    QLabel *cameraFormatLabel = new QLabel;
+    cameraFormatLabel->setText("Format: ");
+
+    listCameraFormatCombo = new QComboBox;
+
+
 
     QPushButton *selectButton = new QPushButton("select");
 
     cameraSelectLayout->addWidget(cameraLabel);
     cameraSelectLayout->addWidget(listCameraCombo);
 
+    cameraSelectFormatLayout->addWidget(cameraFormatLabel);
+    cameraSelectFormatLayout->addWidget(listCameraFormatCombo);
+
 
     cameraParamLayout->addLayout(cameraSelectLayout);
+
+    cameraParamLayout->addLayout(cameraSelectFormatLayout);
 
     cameraParamLayout->addWidget(selectButton);
 
     connect(selectButton,SIGNAL(clicked()),this,SLOT(onClickSelectCameraButton()));
+    connect(listCameraCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(onSelectCameraCombo(int)));
+
+    refreshCameraComboBox(camEnumerator);
 }
 
 void CameraSelectPage::onClickCameraButton(int i)
 {
     win->currentCameraEnumId = i;
     setCameraParamBox(win->listCameraEnumerator[i]);
+}
+
+void CameraSelectPage::onSelectCameraCombo(int i)
+{
+
 }
 
 void CameraSelectPage::onClickSelectCameraButton()

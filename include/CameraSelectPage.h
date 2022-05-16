@@ -12,14 +12,17 @@ public:
 
     void setPage();
     void refreshCameraComboBox(std::shared_ptr<RPCameraInterface::CameraEnumerator> camEnumerator);
+    void refreshCameraFormatComboBox();
     void setCameraParamBox(std::shared_ptr<RPCameraInterface::CameraEnumerator> camEnumerator);
 public slots:
     void onClickSelectCameraButton();
     void onClickCameraButton(int i);
+    void onSelectCameraCombo(int i);
 
 private:
     MainWindow *win;
     QComboBox *listCameraCombo;
+    QComboBox *listCameraFormatCombo;
     QVBoxLayout *cameraParamLayout;
     std::vector<std::string> listCameraIds;
 };
