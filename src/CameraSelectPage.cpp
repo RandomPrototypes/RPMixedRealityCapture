@@ -82,6 +82,8 @@ void CameraSelectPage::refreshCameraFormatComboBox()
             listCameraFormatCombo->addItem(QString(format.c_str()));
         }
         cam->close();
+        win->listCameraFormats = listFormats;
+        win->currentCameraFormatId = 0;
     }
 }
 
@@ -176,12 +178,13 @@ void CameraSelectPage::onClickCameraButton(int i)
 
 void CameraSelectPage::onSelectCameraCombo(int i)
 {
-
+    refreshCameraFormatComboBox();
 }
 
 void CameraSelectPage::onClickSelectCameraButton()
 {
     win->cameraId = listCameraIds[listCameraCombo->currentIndex()];
+    win->currentCameraFormatId = listCameraFormatCombo->currentIndex();
 
     if(win->isCalibrationSection)
         win->calibrationOptionPage->setPage();

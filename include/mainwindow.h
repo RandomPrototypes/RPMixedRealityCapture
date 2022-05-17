@@ -98,8 +98,9 @@ protected:
 
     std::string record_folder;
 
-    int currentCameraEnumId = 0;
+    int currentCameraEnumId = 0, currentCameraFormatId = 0;
     std::vector<std::shared_ptr<RPCameraInterface::CameraEnumerator> > listCameraEnumerator;
+    std::vector<RPCameraInterface::ImageFormat> listCameraFormats;
 
 
     volatile bool recording, recording_finished;

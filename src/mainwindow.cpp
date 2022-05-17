@@ -161,21 +161,8 @@ void MainWindow::videoThreadFunc(std::string cameraId)
         qDebug() << cam->getErrorMsg();
         return ;
     }
-    std::vector<ImageFormat> listFormats = cam->getListAvailableFormat();
-    int selectedFormat = -1;
-    for(size_t i = 0; i < listFormats.size(); i++)
-    {
-        if(listFormats[i].type == ImageType::JPG && listFormats[i].width == 1920 && listFormats[i].height == 1080)
-        {
-            selectedFormat = i;
-            break;
-        }
-    }
-    if(selectedFormat < 0 && listFormats.size() > 0)
-    {
-        selectedFormat = 0;
-    }
-    cam->selectFormat(selectedFormat);
+    if(currentCameraFormatId >= 0 && currentCameraFormatId < listCameraFormats.size())
+        cam->selectFormat(currentCameraFormatId);
 
 
     VideoContainerType videoContainerType = VideoContainerType::NONE;
@@ -202,7 +189,7 @@ void MainWindow::videoThreadFunc(std::string cameraId)
     dstFormat.width = 1280;
     dstFormat.height = 720;
     dstFormat.type = ImageType::BGR24;
-    ImageFormatConverter converter(listFormats[selectedFormat], dstFormat);
+    ImageFormatConverter converter(listCameraFormats[currentCameraFormatId], dstFormat);
 
     std::shared_ptr<ImageData> resultImg = RPCameraInterface::createImageData();
 
