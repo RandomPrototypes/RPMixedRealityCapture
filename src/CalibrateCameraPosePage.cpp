@@ -3,12 +3,14 @@
 
 #include "CalibrateCameraPosePage.h"
 #include "CheckCalibrationPage.h"
+#include "CalibrationOptionPage.h"
 
 #include <libQuestMR/QuestCalibData.h>
 
 CalibrateCameraPosePage::CalibrateCameraPosePage(MainWindow *win)
     :win(win)
 {
+    estimateIntrinsic = false;
 }
 
 
@@ -33,20 +35,32 @@ void CalibrateCameraPosePage::setPage()
     hlayout->addWidget(captureFrameButton);
     hlayout->addWidget(nextButton);
 
+    QPushButton *backToMenuButton = new QPushButton("Back to menu");
     win->camPreviewWidget = new OpenCVWidget(cv::Size(1280, 720));
 
     win->camPreviewWidget->setImg(cv::Mat());
     layout->addWidget(win->instructionLabel);
     layout->addLayout(hlayout);
     layout->addWidget(win->camPreviewWidget);
+    layout->addWidget(backToMenuButton);
 
     win->mainWidget->setLayout(layout);
+
+    win->startCamera();
 
     connect(captureFrameButton,SIGNAL(clicked()),this,SLOT(onClickCaptureFrameButton()));
     connect(nextButton,SIGNAL(clicked()),this,SLOT(onClickAnnotateCalibFrameButton()));
     connect(win->camPreviewWidget,SIGNAL(clicked()),this,SLOT(onClickPreviewWidget()));
+    connect(backToMenuButton,SIGNAL(clicked()),this,SLOT(onClickBackToMenuButton()));
 
-    currentTriggerCount = win->questComThreadData->getTriggerCount();
+
+    if(win->questComThreadData != NULL)
+        currentTriggerCount = win->questComThreadData->getTriggerCount();
+}
+
+void CalibrateCameraPosePage::setEstimateIntrinsic(bool val)
+{
+    estimateIntrinsic = val;
 }
 
 void CalibrateCameraPosePage::capturePoseCalibFrame()
@@ -80,9 +94,13 @@ void CalibrateCameraPosePage::onClickCaptureFrameButton()
 
 void CalibrateCameraPosePage::onClickAnnotateCalibFrameButton()
 {
-    if(win->listCalibrationFrames.size() < 4) {
+    if(!estimateIntrinsic && win->listCalibrationFrames.size() < 4) {
         QMessageBox msgBox;
         msgBox.setText("You must capture at least 4 frames for calibration!!!");
+        msgBox.exec();
+    } else if(estimateIntrinsic && win->listCalibrationFrames.size() < 6) {
+        QMessageBox msgBox;
+        msgBox.setText("You must capture at least 6 frames for calibration!!!");
         msgBox.exec();
     } else {
         win->currentCalibrationFrame = 0;
@@ -113,6 +131,9 @@ void CalibrateCameraPosePage::onTimer()
                 cv::circle(img, win->listCalibrationFrames[win->currentCalibrationFrame].rightControllerImgPos, 3, cv::Scalar(0,255,0), 2);
             win->camPreviewWidget->setImg(img);
         }
+    } else if(state == CalibState::waitingCalibrationUpload) {
+        if(win->questComThreadData->isCalibDataUploaded())
+            win->checkCalibrationPage->setPage();
     }
 }
 
@@ -135,15 +156,24 @@ void CalibrateCameraPosePage::onClickPreviewWidget()
                     listHand2D.push_back(win->listCalibrationFrames[i].rightControllerImgPos);
                     listHand3D.push_back(win->listCalibrationFrames[i].frameData.getRightHandPos());
                 }
-                calibData.calibrateCamPose(listHand3D, listHand2D);
+                if(estimateIntrinsic) {
+                    calibData.calibrateCamIntrinsicAndPose(listHand3D, listHand2D, win->listCalibrationFrames[0].img.size());
+                } else {
+                    calibData.calibrateCamPose(listHand3D, listHand2D);
+                }
                 calibDataStr = calibData.generateXMLString();
                 win->questComThreadData->sendCalibDataToQuest(calibDataStr);
+                state = CalibState::waitingCalibrationUpload;
                 qDebug() << calibDataStr.c_str();
-                //exit(0);
             }
-
-            win->checkCalibrationPage->setPage();
         }
         else win->currentCalibrationFrame = (win->currentCalibrationFrame+1) % win->listCalibrationFrames.size();
     }
 }
+
+void CalibrateCameraPosePage::onClickBackToMenuButton()
+{
+    win->stopCamera();
+    win->calibrationOptionPage->setPage();
+}
+

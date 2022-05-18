@@ -26,6 +26,7 @@
 #include "FirstMenuPage.h"
 #include "CalibrateCameraPosePage.h"
 #include "CalibrateWithChessboardPage.h"
+#include "CalibrateCameraQuestMenuPage.h"
 #include "CalibrationOptionPage.h"
 #include "CameraPreviewPage.h"
 #include "CameraSelectPage.h"
@@ -48,6 +49,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     questCom = libQuestMR::createQuestCommunicator();
     questComThreadData = NULL;
+    questCommunicatorThread = NULL;
 
     camPreviewWidget = NULL;
 
@@ -63,6 +65,7 @@ MainWindow::MainWindow(QWidget *parent)
     firstMenuPage = new FirstMenuPage(this);
     calibrateWithChessboardPage = new CalibrateWithChessboardPage(this);
     calibrateCameraPosePage = new CalibrateCameraPosePage(this);
+    calibrateCameraQuestMenuPage = new CalibrateCameraQuestMenuPage(this);
     calibrationOptionPage = new CalibrationOptionPage(this);
     cameraSelectPage = new CameraSelectPage(this);
     cameraPreviewPage = new CameraPreviewPage(this);
@@ -80,12 +83,7 @@ MainWindow::~MainWindow()
 {
     delete videoInput;
     delete questInput;
-    if(questComThreadData != NULL)
-    {
-        questComThreadData->setFinishedVal(true);
-        questCommunicatorThread->join();
-        delete questCommunicatorThread;
-    }
+    stopQuestCommunicator();
 }
 
 void MainWindow::setFrontPage()
@@ -146,6 +144,7 @@ void MainWindow::questCommunicatorThreadFunc()
 
 void MainWindow::videoThreadFunc(std::string cameraId)
 {
+    videoInput->closed = false;
     recording_finished = false;
     /*cv::VideoCapture cap(cameraId);
 
@@ -248,6 +247,19 @@ void MainWindow::videoThreadFunc(std::string cameraId)
         videoEncoder->release();
         fclose(timestampFile);
     }
+    if(!cam->stopCapturing())
+    {
+        qDebug() << cam->getErrorMsg();
+        return ;
+    }
+    qDebug() << "stopped capturing";
+    if(!cam->close())
+    {
+        qDebug() << cam->getErrorMsg();
+        return ;
+    }
+
+    qDebug() << "closed";
 }
 
 void MainWindow::questThreadFunc()
@@ -321,4 +333,51 @@ void MainWindow::onClickPreviewWidget()
         calibrateCameraPosePage->onClickPreviewWidget();
     else if(currentPageName == PageName::calibrateWithChessboard)
         calibrateWithChessboardPage->onClickPreviewWidget();
+}
+
+void MainWindow::startCamera()
+{
+    if(videoInput->videoThread == NULL) {
+        videoInput->videoThread = new std::thread([&]()
+            {
+                videoThreadFunc(cameraId);
+            }
+        );
+    }
+}
+
+void MainWindow::startQuestCommunicator()
+{
+    if(questCommunicatorThread != NULL) {
+        if(questConnectionStatus == QuestConnectionStatus::Connected)
+            return ;
+        stopQuestCommunicator();
+    }
+    questCommunicatorThread = new std::thread([&]()
+        {
+            questCommunicatorThreadFunc();
+        }
+    );
+}
+
+void MainWindow::stopCamera()
+{
+    if(videoInput->videoThread != NULL) {
+        videoInput->closed = true;
+        videoInput->videoThread->join();
+        videoInput->videoThread = NULL;
+    }
+}
+
+void MainWindow::stopQuestCommunicator()
+{
+    if(questCommunicatorThread != NULL) {
+        if(questComThreadData != NULL)
+            questComThreadData->setFinishedVal(true);
+        questCommunicatorThread->join();
+        delete questCommunicatorThread;
+        questCommunicatorThread = NULL;
+        questComThreadData = NULL;
+    }
+    questConnectionStatus = QuestConnectionStatus::NotConnected;
 }

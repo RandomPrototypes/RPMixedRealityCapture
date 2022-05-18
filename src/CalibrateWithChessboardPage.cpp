@@ -114,8 +114,10 @@ void CalibrateWithChessboardPage::onClickStartCalibration()
     QDir().mkdir(win->record_folder.c_str());
     win->recording = true;
 
-    currentTriggerCount = win->questComThreadData->getTriggerCount();
+    win->startCamera();
 
+    if(win->questComThreadData != NULL)
+        currentTriggerCount = win->questComThreadData->getTriggerCount();
 }
 
 void CalibrateWithChessboardPage::onClickCaptureFrame()

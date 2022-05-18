@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include <libQuestMR/QuestCalibData.h>
 #include "CheckCalibrationPage.h"
+#include "CalibrationOptionPage.h"
 
 CheckCalibrationPage::CheckCalibrationPage(MainWindow *win)
     :win(win)
@@ -19,13 +20,25 @@ void CheckCalibrationPage::setPage()
     QLabel *calibrationLabel = new QLabel;
     calibrationLabel->setText("check calibration: ");
 
+    hlayout = new QHBoxLayout();
+    QPushButton *backToMenuButton = new QPushButton("Back to menu");
+
+    hlayout->addWidget(backToMenuButton);
+
+
     win->camPreviewWidget = new OpenCVWidget(cv::Size(1280, 720));
 
     win->camPreviewWidget->setImg(cv::Mat());
     layout->addWidget(calibrationLabel);
     layout->addWidget(win->camPreviewWidget);
+    layout->addLayout(hlayout);
+
+    win->startCamera();
 
     win->mainWidget->setLayout(layout);
+
+    connect(backToMenuButton,SIGNAL(clicked()),this,SLOT(onClickBackToMenuButton()));
+
 }
 
 void CheckCalibrationPage::onTimer()
@@ -64,4 +77,11 @@ void CheckCalibrationPage::onTimer()
         }
         win->camPreviewWidget->setImg(img);
     }
+}
+
+
+void CheckCalibrationPage::onClickBackToMenuButton()
+{
+    win->stopCamera();
+    win->calibrationOptionPage->setPage();
 }

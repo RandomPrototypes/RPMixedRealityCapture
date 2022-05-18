@@ -13,11 +13,10 @@ public:
     void setPage();
     void onTimer();
 public slots:
-    void onClickCalibrateWithChessboardButton();
-    void onClickLoadCalibrationFileButton();
+    void onClickImportExportCalibrationFileButton();
     void onClickCheckCurrentCalibrationButton();
-    void onClickRecalibratePoseButton();
-    void onClickRecordMixedRealityButton();
+    void onClickCalibrateCameraQuestButton();
+    void onClickBackToMenuButton();
 private:
     MainWindow *win;
 };

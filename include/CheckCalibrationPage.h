@@ -13,8 +13,12 @@ public:
     void setPage();
     void onTimer();
 
+public slots:
+    void onClickBackToMenuButton();
+
 private:
     MainWindow *win;
+    QHBoxLayout *hlayout;
 };
 
 #endif // CHECKCALIBRATIONPAGE_H

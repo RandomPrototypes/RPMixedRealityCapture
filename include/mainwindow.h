@@ -33,6 +33,7 @@ public:
 class FirstMenuPage;
 class CalibrateWithChessboardPage;
 class CalibrateCameraPosePage;
+class CalibrateCameraQuestMenuPage;
 class CalibrationOptionPage;
 class CameraSelectPage;
 class CameraPreviewPage;
@@ -65,6 +66,12 @@ public:
     void captureChessboardFrame();
     void detectChessboardsAndCalibrate();
 
+    void startCamera();
+    void startQuestCommunicator();
+    void stopCamera();
+    void stopQuestCommunicator();
+
+
 private slots:
     void onClickStartButton();
     void onClickPreviewWidget();
@@ -73,6 +80,7 @@ protected:
     friend class FirstMenuPage;
     friend class CalibrateWithChessboardPage;
     friend class CalibrateCameraPosePage;
+    friend class CalibrateCameraQuestMenuPage;
     friend class CalibrationOptionPage;
     friend class CameraSelectPage;
     friend class CameraPreviewPage;
@@ -130,6 +138,7 @@ protected:
         frontPage,
         firstMenuPage,
         recalibratePose,
+        calibrateCameraQuestMenu,
         calibrateWithChessboard,
         checkCalibration,
         connectToQuest,
@@ -146,6 +155,7 @@ protected:
     FirstMenuPage *firstMenuPage;
     CalibrateWithChessboardPage *calibrateWithChessboardPage;
     CalibrateCameraPosePage *calibrateCameraPosePage;
+    CalibrateCameraQuestMenuPage *calibrateCameraQuestMenuPage;
     CalibrationOptionPage *calibrationOptionPage;
     CameraSelectPage *cameraSelectPage;
     CameraPreviewPage *cameraPreviewPage;

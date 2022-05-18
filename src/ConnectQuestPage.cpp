@@ -52,11 +52,7 @@ void ConnectQuestPage::onClickConnectButton()
         connectButton->setEnabled(false);
         win->questConnectionStatus = MainWindow::QuestConnectionStatus::Connecting;
 
-        win->questCommunicatorThread = new std::thread([&]()
-            {
-                win->questCommunicatorThreadFunc();
-            }
-        );
+        win->startQuestCommunicator();
     } else {
         win->cameraSelectPage->setPage();
     }
@@ -70,11 +66,6 @@ void ConnectQuestPage::onTimer()
         msgBox.setText("Can not connect to the quest...");
         msgBox.exec();
         win->cameraSelectPage->setPage();
-        /*questCommunicatorThread->join();
-        questCommunicatorThread = NULL;
-        questConnectionStatus = QuestConnectionStatus::NotConnected;
-        connectButton->setText("connect");
-        connectButton->setEnabled(true);*/
     } else if(win->questConnectionStatus == MainWindow::QuestConnectionStatus::Connected) {
         win->cameraSelectPage->setPage();
     }

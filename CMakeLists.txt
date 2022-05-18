@@ -41,6 +41,7 @@ set(PROJECT_SOURCES
         include/CameraPreviewPage.h
         include/CameraSelectPage.h
         include/CalibrationOptionPage.h
+        include/CalibrateCameraQuestMenuPage.h
         include/PostProcessingPage.h
         include/CalibrateWithChessboardPage.h
         include/CalibrateCameraPosePage.h
@@ -53,6 +54,7 @@ set(PROJECT_SOURCES
         src/PostProcessingPage.cpp
         src/CameraSelectPage.cpp
         src/CalibrationOptionPage.cpp
+        src/CalibrateCameraQuestMenuPage.cpp
         src/CalibrateWithChessboardPage.cpp
         src/CalibrateCameraPosePage.cpp
         src/RecordMixedRealityPage.cpp

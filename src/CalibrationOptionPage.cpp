@@ -1,11 +1,10 @@
 #include "mainwindow.h"
 #include <QFileDialog>
 #include <libQuestMR/QuestCalibData.h>
-#include "CalibrateWithChessboardPage.h"
+#include "CalibrateCameraQuestMenuPage.h"
 #include "CalibrationOptionPage.h"
 #include "CheckCalibrationPage.h"
-#include "CalibrateCameraPosePage.h"
-#include "RecordMixedRealityPage.h"
+#include "FirstMenuPage.h"
 
 CalibrationOptionPage::CalibrationOptionPage(MainWindow *win)
     :win(win)
@@ -18,40 +17,35 @@ void CalibrationOptionPage::setPage()
     win->clearMainWidget();
 
     QVBoxLayout *layout = new QVBoxLayout();
+    layout->setContentsMargins(200,50,200,50);
 
-    QPushButton *checkCurrentCalibButton = new QPushButton("check current calibration");
+
+    QPushButton *checkCurrentCalibButton = new QPushButton("Check current calibration");
     layout->addWidget(checkCurrentCalibButton);
 
-    QPushButton *loadCalibrationFileButton = new QPushButton("load calibration file");
-    layout->addWidget(loadCalibrationFileButton);
+    QPushButton *importExportCalibrationFileButton = new QPushButton("Import/export calibration file");
+    layout->addWidget(importExportCalibrationFileButton);
 
-    QPushButton *saveCurrentCalibrationFileButton = new QPushButton("save calibration to file");
-    layout->addWidget(saveCurrentCalibrationFileButton);
+    QPushButton *calibrateCameraQuestButton = new QPushButton("Calibrate camera/quest");
+    layout->addWidget(calibrateCameraQuestButton);
 
-    QPushButton *calibrateWithChessboardButton = new QPushButton("calibrate camera with chessboard");
-    layout->addWidget(calibrateWithChessboardButton);
-
-    QPushButton *recalibrateCameraPoseButton = new QPushButton("recalibrate camera pose");
-    layout->addWidget(recalibrateCameraPoseButton);
-
-    QPushButton *recordMixedRealityButton = new QPushButton("record mixed reality");
-    layout->addWidget(recordMixedRealityButton);
+    QPushButton *backToMenuButton = new QPushButton("Back to menu");
+    layout->addWidget(backToMenuButton);
 
     win->mainWidget->setLayout(layout);
 
     connect(checkCurrentCalibButton,SIGNAL(clicked()),this,SLOT(onClickCheckCurrentCalibrationButton()));
-    connect(loadCalibrationFileButton,SIGNAL(clicked()),this,SLOT(onClickLoadCalibrationFileButton()));
-    connect(calibrateWithChessboardButton,SIGNAL(clicked()),this,SLOT(onClickCalibrateWithChessboardButton()));
-    connect(recalibrateCameraPoseButton,SIGNAL(clicked()),this,SLOT(onClickRecalibratePoseButton()));
-    connect(recordMixedRealityButton,SIGNAL(clicked()),this,SLOT(onClickRecordMixedRealityButton()));
+    connect(importExportCalibrationFileButton,SIGNAL(clicked()),this,SLOT(onClickImportExportCalibrationFileButton()));
+    connect(calibrateCameraQuestButton,SIGNAL(clicked()),this,SLOT(onClickCalibrateCameraQuestButton()));
+    connect(backToMenuButton,SIGNAL(clicked()),this,SLOT(onClickBackToMenuButton()));
 }
 
-void CalibrationOptionPage::onClickCalibrateWithChessboardButton()
+void CalibrationOptionPage::onClickCalibrateCameraQuestButton()
 {
-    win->calibrateWithChessboardPage->setPage();
+    win->calibrateCameraQuestMenuPage->setPage();
 }
 
-void CalibrationOptionPage::onClickLoadCalibrationFileButton()
+void CalibrationOptionPage::onClickImportExportCalibrationFileButton()
 {
     QFileDialog dialog(win);
     dialog.setFileMode(QFileDialog::ExistingFile);
@@ -74,13 +68,9 @@ void CalibrationOptionPage::onClickCheckCurrentCalibrationButton()
     win->checkCalibrationPage->setPage();
 }
 
-void CalibrationOptionPage::onClickRecalibratePoseButton()
+void CalibrationOptionPage::onClickBackToMenuButton()
 {
-    win->calibrateCameraPosePage->setPage();
-}
-
-
-void CalibrationOptionPage::onClickRecordMixedRealityButton()
-{
-    win->recordMixedRealityPage->setPage();
+    win->stopQuestCommunicator();
+    win->stopCamera();
+    win->firstMenuPage->setPage();
 }

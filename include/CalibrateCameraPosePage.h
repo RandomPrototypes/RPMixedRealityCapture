@@ -13,19 +13,23 @@ public:
     void onTimer();
     void capturePoseCalibFrame();
     bool calibratePose();
+    void setEstimateIntrinsic(bool val);
 public slots:
     void onClickCaptureFrameButton();
     void onClickAnnotateCalibFrameButton();
     void onClickPreviewWidget();
+    void onClickBackToMenuButton();
 private:
 
     MainWindow *win;
     QHBoxLayout *hlayout;
+    bool estimateIntrinsic;
 
     enum class CalibState
     {
         capture,
-        annotate
+        annotate,
+        waitingCalibrationUpload
     };
 
     CalibState state;
