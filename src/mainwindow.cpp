@@ -32,6 +32,7 @@
 #include "CameraSelectPage.h"
 #include "CheckCalibrationPage.h"
 #include "ConnectQuestPage.h"
+#include "PostProcessingOptionPage.h"
 #include "PostProcessingPage.h"
 #include "RecordMixedRealityPage.h"
 
@@ -72,6 +73,7 @@ MainWindow::MainWindow(QWidget *parent)
     checkCalibrationPage = new CheckCalibrationPage(this);
     connectQuestPage = new ConnectQuestPage(this);
     recordMixedRealityPage = new RecordMixedRealityPage(this);
+    postProcessingOptionPage = new PostProcessingOptionPage(this);
     postProcessingPage = new PostProcessingPage(this);
 
 

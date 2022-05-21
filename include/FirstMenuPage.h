@@ -15,6 +15,7 @@ public:
 public slots:
     void onClickCalibrationButton();
     void onClickRecordingButton();
+    void onClickPostProcessingButton();
 private:
     MainWindow *win;
 };

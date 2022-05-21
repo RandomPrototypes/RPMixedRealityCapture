@@ -40,6 +40,7 @@ class CameraPreviewPage;
 class CheckCalibrationPage;
 class ConnectQuestPage;
 class RecordMixedRealityPage;
+class PostProcessingOptionPage;
 class PostProcessingPage;
 
 class MainWindow : public QMainWindow
@@ -87,10 +88,12 @@ protected:
     friend class CheckCalibrationPage;
     friend class ConnectQuestPage;
     friend class RecordMixedRealityPage;
+    friend class PostProcessingOptionPage;
     friend class PostProcessingPage;
     QWidget *mainWidget;
     OpenCVWidget *camPreviewWidget;
     OpenCVWidget *questPreviewWidget;
+    OpenCVWidget *postProcessPreviewWidget;
     QTimer *timer;
     VideoInputMngr *videoInput;
     VideoInputMngr *questInput;
@@ -144,6 +147,7 @@ protected:
         connectToQuest,
         cameraPreview,
         cameraSelect,
+        postProcessingOption,
         postProcessing,
         recordMixedReality,
         calibrationOption
@@ -162,6 +166,7 @@ protected:
     CheckCalibrationPage *checkCalibrationPage;
     ConnectQuestPage *connectQuestPage;
     RecordMixedRealityPage *recordMixedRealityPage;
+    PostProcessingOptionPage *postProcessingOptionPage;
     PostProcessingPage *postProcessingPage;
 };
 

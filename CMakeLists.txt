@@ -42,6 +42,7 @@ set(PROJECT_SOURCES
         include/CameraSelectPage.h
         include/CalibrationOptionPage.h
         include/CalibrateCameraQuestMenuPage.h
+        include/PostProcessingOptionPage.h
         include/PostProcessingPage.h
         include/CalibrateWithChessboardPage.h
         include/CalibrateCameraPosePage.h
@@ -51,6 +52,7 @@ set(PROJECT_SOURCES
         src/mainwindow.cpp
         src/FirstMenuPage.cpp
         src/ConnectQuestPage.cpp
+        src/PostProcessingOptionPage.cpp
         src/PostProcessingPage.cpp
         src/CameraSelectPage.cpp
         src/CalibrationOptionPage.cpp
