@@ -14,7 +14,7 @@ public:
     void setPage();
     void onTimer();
     void refreshBackgroundSubtractorOption();
-    void updateCamRecordingFile();
+    void updateRecordingFile();
     void updatePreviewImg();
 public slots:
     void onClickQuestRecordingFileBrowseButton();
@@ -25,7 +25,18 @@ public slots:
     void onClickMatteImgCheckbox();
     void onClickGreenBackgroundCheckbox();
     void onClickBlackBackgroundCheckbox();
+    void onClickPlayButton();
+    void onClickStopButton();
 private:
+    bool loadCameraTimestamps(std::string filename);
+    void readCameraFrame(uint64_t timestamp);
+
+    enum class PostProcessingState
+    {
+        previewPlay,
+        previewPause,
+    };
+
     MainWindow *win;
     QLineEdit *questRecordingFileEdit;
     QLineEdit *camRecordingFileEdit;
@@ -33,14 +44,26 @@ private:
     QGridLayout *layout;
     QGridLayout *backgroundSubtractorOptionLayout;
 
+    QToolButton *playButton;
+    QLabel *durationLabel;
+
     QCheckBox *camImgCheckbox;
     QCheckBox *questImgCheckbox;
     QCheckBox *matteImgCheckbox;
     QCheckBox *greenBackgroundCheckbox;
     QCheckBox *blackBackgroundCheckbox;
-    cv::Mat firstFrameCam;
+    cv::Mat currentFrameCam;
+    cv::Mat currentFrameQuest;
 
+    std::shared_ptr<libQuestMR::QuestVideoMngr> questVideoMngr;
+    std::shared_ptr<libQuestMR::QuestVideoSourceFile> questVideoSrc;
     std::shared_ptr<libQuestMR::BackgroundSubtractor> backgroundSubtractor;
+    std::shared_ptr<cv::VideoCapture> capCameraVid;
+    std::vector<uint64_t> listCameraTimestamp;
+    int cameraFrameId, questFrameId;
+
+    PostProcessingState state;
+    uint64_t startPlayTimestamp;
 };
 
 

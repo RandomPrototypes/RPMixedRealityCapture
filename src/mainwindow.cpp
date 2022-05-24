@@ -316,6 +316,8 @@ void MainWindow::onTimer()
         recordMixedRealityPage->onTimer();
     else if(currentPageName == PageName::postProcessing)
         postProcessingPage->onTimer();
+    else if(currentPageName == PageName::postProcessingOption)
+        postProcessingOptionPage->onTimer();
 
     if(questInput->hasNewImg && questPreviewWidget != NULL)
     {

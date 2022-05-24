@@ -8,11 +8,14 @@
 #include <QColorDialog>
 #include <QCheckBox>
 #include <QMessageBox>
+#include <QStyle>
+#include <QToolButton>
+#include <fstream>
+#include <QDebug>
 
 PostProcessingOptionPage::PostProcessingOptionPage(MainWindow *win)
     :win(win)
 {
-
 }
 
 void PostProcessingOptionPage::setPage()
@@ -20,8 +23,10 @@ void PostProcessingOptionPage::setPage()
     win->currentPageName = MainWindow::PageName::postProcessingOption;
     win->clearMainWidget();
 
+    state = PostProcessingState::previewPause;
+
     layout = new QGridLayout();
-    layout->setContentsMargins(100,100,100,300);
+    layout->setContentsMargins(10,50,10,50);
 
     QLabel *postProcessingLabel = new QLabel;
     postProcessingLabel->setText("Post processing: ");
@@ -49,6 +54,30 @@ void PostProcessingOptionPage::setPage()
     for(int i = 0; i < libQuestMR::getBackgroundSubtractorCount(); i++)
         listBackgroundSubtractorCombo->addItem(QString(libQuestMR::getBackgroundSubtractorName(i).c_str()));
 
+    QHBoxLayout *hlayout1 = new QHBoxLayout();
+
+    QPushButton *selectPlayAreaButton = new QPushButton();
+    selectPlayAreaButton->setText("select play area");
+
+    //QPushButton *playButton = new QPushButton();
+    //playButton->setText("play");
+
+    playButton = new QToolButton();
+    playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPlay));
+
+    QToolButton *stopButton = new QToolButton();
+    stopButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaStop));
+
+    durationLabel = new QLabel();
+    durationLabel->setText("00:00 / 00:00");
+    durationLabel->setMaximumWidth(100);
+
+    QPushButton *startEncodingButton = new QPushButton();
+    startEncodingButton->setText("start encoding");
+
+    hlayout1->addWidget(selectPlayAreaButton);
+    hlayout1->addWidget(startEncodingButton);
+
     backgroundSubtractorOptionLayout = new QGridLayout();
 
     QLabel *previewLabel = new QLabel;
@@ -57,6 +86,7 @@ void PostProcessingOptionPage::setPage()
     QHBoxLayout *preview_checkbox_layout = new QHBoxLayout();
     camImgCheckbox = new QCheckBox;
     camImgCheckbox->setText("camera img");
+    camImgCheckbox->setChecked(true);
 
     questImgCheckbox = new QCheckBox;
     questImgCheckbox->setText("quest img");
@@ -81,6 +111,11 @@ void PostProcessingOptionPage::setPage()
 
     win->postProcessPreviewWidget->setImg(cv::Mat());
 
+    QHBoxLayout *bottom_hlayout = new QHBoxLayout();
+    bottom_hlayout->addWidget(playButton);
+    bottom_hlayout->addWidget(stopButton);
+    bottom_hlayout->addWidget(durationLabel);
+
     layout->addWidget(postProcessingLabel, 0, 0);
 
     layout->addWidget(questRecordingFileLabel, 1, 0);
@@ -94,12 +129,16 @@ void PostProcessingOptionPage::setPage()
     layout->addWidget(backgroundSubtractorLabel, 3, 0);
     layout->addWidget(listBackgroundSubtractorCombo, 3, 1);
 
-    layout->addWidget(previewLabel, 4, 0);
-    layout->addLayout(preview_checkbox_layout, 4, 1);
+    layout->addLayout(hlayout1, 4, 0, 1, 3);
 
-    layout->addWidget(win->postProcessPreviewWidget, 5, 0, 3, 3);
+    layout->addWidget(previewLabel, 5, 0);
+    layout->addLayout(preview_checkbox_layout, 5, 1);
 
-    layout->addLayout(backgroundSubtractorOptionLayout, 5, 3, 3, 3);
+    layout->addWidget(win->postProcessPreviewWidget, 6, 0, 3, 3);
+
+    layout->addLayout(backgroundSubtractorOptionLayout, 6, 3, 3, 3);
+
+    layout->addLayout(bottom_hlayout, 10, 0, 1, 3);
     win->mainWidget->setLayout(layout);
 
     connect(questRecordingFileBrowseButton,SIGNAL(clicked()),this,SLOT(onClickQuestRecordingFileBrowseButton()));
@@ -112,6 +151,9 @@ void PostProcessingOptionPage::setPage()
     connect(greenBackgroundCheckbox,SIGNAL(clicked()),this,SLOT(onClickGreenBackgroundCheckbox()));
     connect(blackBackgroundCheckbox,SIGNAL(clicked()),this,SLOT(onClickBlackBackgroundCheckbox()));
 
+    connect(playButton,SIGNAL(clicked()),this,SLOT(onClickPlayButton()));
+    connect(stopButton,SIGNAL(clicked()),this,SLOT(onClickStopButton()));
+
     refreshBackgroundSubtractorOption();
 }
 
@@ -121,7 +163,7 @@ void PostProcessingOptionPage::refreshBackgroundSubtractorOption()
     int bgMethodId = listBackgroundSubtractorCombo->currentIndex();
     if(bgMethodId < 0)
         return ;
-    std::shared_ptr<libQuestMR::BackgroundSubtractor> backgroundSubtractor = libQuestMR::createBackgroundSubtractor(bgMethodId);
+    backgroundSubtractor = libQuestMR::createBackgroundSubtractor(bgMethodId);
     for(int i = 0; i < backgroundSubtractor->getParameterCount(); i++) {
         if(backgroundSubtractor->getParameterType(i) == libQuestMR::BackgroundSubtractorParamType::ParamTypeInt) {
             QLabel *label = new QLabel;
@@ -166,19 +208,134 @@ void PostProcessingOptionPage::refreshBackgroundSubtractorOption()
 
 void PostProcessingOptionPage::onTimer()
 {
+    if(state == PostProcessingState::previewPlay)
+    {
+        uint64_t timestamp = libQuestMR::getTimestampMs() - startPlayTimestamp + listCameraTimestamp[0];
+        readCameraFrame(timestamp);
+        updatePreviewImg();
+    }
 }
 
-void PostProcessingOptionPage::updateCamRecordingFile()
+uint64_t absdiff(uint64_t t1, uint64_t t2)
 {
-    std::string filename = camRecordingFileEdit->text().toStdString();
-    cv::VideoCapture cap(filename);
-    if(!cap.isOpened()) {
+    return t2 > t1 ? t2-t1 : t1-t2;
+}
+
+void PostProcessingOptionPage::readCameraFrame(uint64_t timestamp)
+{
+    while(cameraFrameId+1 < listCameraTimestamp.size() && absdiff(timestamp, listCameraTimestamp[cameraFrameId+1]) < absdiff(timestamp, listCameraTimestamp[cameraFrameId]))
+    {
+        (*capCameraVid) >> currentFrameCam;
+        cameraFrameId++;
+    }
+    if(questVideoMngr != NULL && questVideoSrc->isValid()) {
+        qDebug() << "videoTickImpl";
+        uint64_t quest_timestamp;
+        currentFrameQuest = questVideoMngr->getMostRecentImg(&quest_timestamp);
+        while(questVideoSrc->isValid() && quest_timestamp < listCameraTimestamp[cameraFrameId]) {
+            questVideoMngr->VideoTickImpl();
+            currentFrameQuest = questVideoMngr->getMostRecentImg(&quest_timestamp);
+        }
+    }
+    int currentTime = (int)(listCameraTimestamp[cameraFrameId] - listCameraTimestamp[0])/1000;
+    int duration = (int)(listCameraTimestamp[listCameraTimestamp.size()-1] - listCameraTimestamp[0])/1000;
+    char txt[255];
+    sprintf(txt, "%02d:%02d / %02d:%02d", currentTime/60, currentTime%60, duration/60, duration%60);
+    durationLabel->setText(txt);
+}
+
+static bool endsWith(const std::string& str, const std::string& suffix)
+{
+    return str.size() >= suffix.size() && 0 == str.compare(str.size()-suffix.size(), suffix.size(), suffix);
+}
+
+bool PostProcessingOptionPage::loadCameraTimestamps(std::string filename)
+{
+    listCameraTimestamp.clear();
+    std::ifstream timestampFile(filename);
+    std::string timestampStr;
+
+    if(!timestampFile.good())
+        return false;
+
+    while(std::getline(timestampFile, timestampStr))
+    {
+        uint64_t timestamp;
+        std::istringstream iss(timestampStr);
+        iss >> timestamp;
+        listCameraTimestamp.push_back(timestamp);
+    }
+    return true;
+}
+
+
+void PostProcessingOptionPage::updateRecordingFile()
+{
+    if(capCameraVid != NULL) {
+        capCameraVid->release();
+        capCameraVid = NULL;
+    }
+    std::string camFilename = camRecordingFileEdit->text().toStdString();
+    std::string questFilename = questRecordingFileEdit->text().toStdString();
+    if(!endsWith(camFilename, "_cam.mp4")) {
+        if(camFilename.size() > 0) {
+            QMessageBox msgBox;
+            msgBox.setText("camera files should ends with _cam.mp4");
+            msgBox.exec();
+        }
+        return ;
+    }
+    if(questFilename.size() > 0 && !endsWith(questFilename, "_quest.questMRVideo"))
+    {
         QMessageBox msgBox;
-        msgBox.setText("Can not connect to the quest...");
+        msgBox.setText("quest files should ends with _quest.questMRVideo");
+        msgBox.exec();
+        questFilename = "";
+        questRecordingFileEdit->setText("");
+    }
+    std::string camTimestampFilename = camFilename.substr(0, camFilename.size()-7)+"timestamp.txt";
+    if(!loadCameraTimestamps(camTimestampFilename)) {
+        QMessageBox msgBox;
+        msgBox.setText(("can not load camera timestamps '"+camTimestampFilename+"'").c_str());
         msgBox.exec();
         return ;
     }
-    cap >> firstFrameCam;
+
+    capCameraVid = std::shared_ptr<cv::VideoCapture>(new cv::VideoCapture(camFilename));
+    if(!capCameraVid->isOpened()) {
+        QMessageBox msgBox;
+        msgBox.setText("Can not connect to the quest...");
+        msgBox.exec();
+        capCameraVid = NULL;
+        return ;
+    }
+    if(questFilename.size() > 0) {
+        if(questVideoMngr != NULL) {
+            questVideoMngr->detachSource();
+            questVideoSrc->close();
+            questVideoMngr = NULL;
+            questVideoSrc = NULL;
+        }
+        questVideoMngr = libQuestMR::createQuestVideoMngr();
+        questVideoSrc = libQuestMR::createQuestVideoSourceFile();
+        questVideoSrc->open(questFilename.c_str());
+        questVideoMngr->attachSource(questVideoSrc);
+        std::string questTimestampFilename = questFilename.substr(0, questFilename.size()-19)+"_questTimestamp.txt";
+        qDebug() << questTimestampFilename.c_str();
+        questVideoMngr->setRecordedTimestampSource(questTimestampFilename.c_str());
+        currentFrameQuest = cv::Mat();
+        while(questVideoSrc->isValid() && currentFrameQuest.cols < 100) {
+            qDebug() << "videoTickImpl";
+            questVideoMngr->VideoTickImpl();
+            uint64_t quest_timestamp;
+            currentFrameQuest = questVideoMngr->getMostRecentImg(&quest_timestamp);
+        }
+    }
+    cameraFrameId = 0;
+    questFrameId = 0;
+    (*capCameraVid) >> currentFrameCam;
+    startPlayTimestamp = libQuestMR::getTimestampMs();
+    readCameraFrame(listCameraTimestamp[0]);
     updatePreviewImg();
 }
 
@@ -196,6 +353,14 @@ void PostProcessingOptionPage::onClickQuestRecordingFileBrowseButton()
         if(filenames.size() == 1)
         {
             questRecordingFileEdit->setText(filenames[0]);
+
+            std::string questFilename = filenames[0].toStdString();
+            if(camRecordingFileEdit->text().size() == 0 && endsWith(questFilename, "_quest.questMRVideo")) {
+                std::string camFilename = questFilename.substr(0, questFilename.size() - 19) + "_cam.mp4";
+                if(std::ifstream(camFilename).good())
+                    camRecordingFileEdit->setText(camFilename.c_str());
+            }
+            updateRecordingFile();
         }
     }
 }
@@ -213,29 +378,79 @@ void PostProcessingOptionPage::onClickCamRecordingFileBrowseButton()
         if(filenames.size() == 1)
         {
             camRecordingFileEdit->setText(filenames[0]);
-            updateCamRecordingFile();
+
+            std::string camFilename = filenames[0].toStdString();
+            if(questRecordingFileEdit->text().size() == 0 && endsWith(camFilename, "_cam.mp4")) {
+                std::string questFilename = camFilename.substr(0, camFilename.size() - 8) + "_quest.questMRVideo";
+                if(std::ifstream(questFilename).good())
+                    questRecordingFileEdit->setText(questFilename.c_str());
+            }
+            updateRecordingFile();
         }
     }
 }
 
+cv::Mat alphaBlendingMat(const cv::Mat& img1, const cv::Mat& img2, const cv::Mat& alphaMask)
+{
+    cv::Mat result = cv::Mat(img1.size(), CV_8UC3);
+    for(int i = 0; i < result.rows; i++)
+    {
+        unsigned char *dst = result.ptr<unsigned char>(i);
+        const unsigned char *src1 = img1.ptr<unsigned char>(i);
+        const unsigned char *src2 = img2.ptr<unsigned char>(i);
+        const unsigned char *alphaPtr = alphaMask.ptr<unsigned char>(i);
+        for(int j = 0; j < result.cols; j++)
+        {
+            unsigned short alpha = *alphaPtr;
+            unsigned short beta = 255 - alpha;
+            for(int k = 3; k > 0; k--) {
+                *dst++ = (alpha * (*src1++) + beta * (*src2++))/255;
+            }
+            alphaPtr++;
+        }
+    }
+    return result;
+}
+
 void PostProcessingOptionPage::updatePreviewImg()
 {
+    if(cameraFrameId == 0 && backgroundSubtractor != NULL)
+        backgroundSubtractor->restart();
     cv::Size size(1280,720);
-    if(!firstFrameCam.empty())
-        size = firstFrameCam.size();
-    cv::Mat background = cv::Mat(size, CV_8UC3);
+    if(!currentFrameCam.empty())
+        size = currentFrameCam.size();
+    cv::Mat background;
     cv::Mat middleImg;
     if(greenBackgroundCheckbox->isChecked()) {
+        background = cv::Mat(size, CV_8UC3);
         background.setTo(cv::Scalar(0,255,0));
     } else if(blackBackgroundCheckbox->isChecked()) {
+        background = cv::Mat(size, CV_8UC3);
         background.setTo(cv::Scalar(0,0,0));
+    } else if(questImgCheckbox->isChecked()) {
+        background = currentFrameQuest(cv::Rect(0,0,currentFrameQuest.cols/2,currentFrameQuest.rows));
+        cv::resize(background, background, size);
     }
-    if(camImgCheckbox->isChecked()) {
-        middleImg = firstFrameCam;
+    cv::Mat fgmask;
+    if(camImgCheckbox->isChecked() || matteImgCheckbox->isChecked()) {
+        if(!currentFrameCam.empty()) {
+            if(!background.empty() || matteImgCheckbox->isChecked())
+                backgroundSubtractor->apply(currentFrameCam, fgmask);
+
+            if(matteImgCheckbox->isChecked()) {
+                cv::cvtColor(fgmask, middleImg, cv::COLOR_GRAY2BGR);
+                background = cv::Mat();
+            } else {
+                middleImg = currentFrameCam.clone();
+            }
+        }
     }
     cv::Mat result = background;
-    if(!middleImg.empty())
-        result = middleImg;
+    if(!middleImg.empty()) {
+        if(!fgmask.empty() && !background.empty())
+            result = alphaBlendingMat(middleImg, background, fgmask);
+        else result = middleImg;
+    }
     win->postProcessPreviewWidget->setImg(result);
 }
 
@@ -271,4 +486,26 @@ void PostProcessingOptionPage::onClickBlackBackgroundCheckbox()
 void PostProcessingOptionPage::onSelectBackgroundSubtractorCombo(int id)
 {
     refreshBackgroundSubtractorOption();
+}
+
+void PostProcessingOptionPage::onClickPlayButton()
+{
+    if(listCameraTimestamp.size() > 0)
+    {
+        if(state == PostProcessingState::previewPlay) {
+            playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPlay));
+            state = PostProcessingState::previewPause;
+        } else {
+            state = PostProcessingState::previewPlay;
+            playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPause));
+            startPlayTimestamp = libQuestMR::getTimestampMs() - (listCameraTimestamp[cameraFrameId]- listCameraTimestamp[0]);
+        }
+    }
+}
+
+void PostProcessingOptionPage::onClickStopButton()
+{
+    playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPlay));
+    state = PostProcessingState::previewPause;
+    updateRecordingFile();
 }
