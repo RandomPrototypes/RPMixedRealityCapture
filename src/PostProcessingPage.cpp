@@ -74,7 +74,7 @@ void PostProcessingPage::postProcessThreadFunc()
         std::shared_ptr<libQuestMR::QuestVideoSourceFile> videoSrc;
         videoSrc->open((win->record_folder+"/questVid.questMRVideo").c_str());
         mngr->attachSource(videoSrc);
-        mngr->setRecordedTimestampSource(timestampFilename.c_str());
+        mngr->setRecordedTimestampFile(timestampFilename.c_str());
         while(true)
         {
             if(!videoSrc->isValid())

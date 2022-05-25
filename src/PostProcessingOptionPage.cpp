@@ -322,7 +322,7 @@ void PostProcessingOptionPage::updateRecordingFile()
         questVideoMngr->attachSource(questVideoSrc);
         std::string questTimestampFilename = questFilename.substr(0, questFilename.size()-19)+"_questTimestamp.txt";
         qDebug() << questTimestampFilename.c_str();
-        questVideoMngr->setRecordedTimestampSource(questTimestampFilename.c_str());
+        questVideoMngr->setRecordedTimestampFile(questTimestampFilename.c_str());
         currentFrameQuest = cv::Mat();
         while(questVideoSrc->isValid() && currentFrameQuest.cols < 100) {
             qDebug() << "videoTickImpl";
