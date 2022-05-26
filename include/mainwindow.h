@@ -107,7 +107,7 @@ protected:
 
     std::shared_ptr<libQuestMR::QuestVideoMngr> questVideoMngr;
 
-    std::string record_folder;
+    std::string record_folder, record_name;
 
     int currentCameraEnumId = 0, currentCameraFormatId = 0;
     std::vector<std::shared_ptr<RPCameraInterface::CameraEnumerator> > listCameraEnumerator;
@@ -171,5 +171,10 @@ protected:
 };
 
 void clearLayout(QLayout *layout);
+
+inline bool endsWith(const std::string& str, const std::string& suffix)
+{
+    return str.size() >= suffix.size() && 0 == str.compare(str.size()-suffix.size(), suffix.size(), suffix);
+}
 
 #endif // MAINWINDOW_H

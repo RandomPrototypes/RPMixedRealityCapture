@@ -211,8 +211,8 @@ void MainWindow::videoThreadFunc(std::string cameraId)
                 if(cam->hasRecordingCapability()) {
                     cam->startRecording();
                 } else if(videoEncoder == NULL) {
-                    recordedVideoTimestampFilename = record_folder+"/camVideoTimestamp.txt";
-                    recordedVideoFilename = record_folder+"/camVideo.h264";
+                    recordedVideoTimestampFilename = record_folder+"/"+record_name+"_camTimestamp.txt";
+                    recordedVideoFilename = record_folder+"/"+record_name+"_cam.mp4";
                     timestampFile = fopen(recordedVideoTimestampFilename.c_str(), "w");
                     videoEncoder = RPCameraInterface::createVideoEncoder();
                     videoEncoder->open(recordedVideoFilename.c_str(), 720, 1280, 30);
@@ -225,8 +225,8 @@ void MainWindow::videoThreadFunc(std::string cameraId)
             }
         } else if(recordingStarted) {
             if(cam->hasRecordingCapability()) {
-                recordedVideoFilename = record_folder+"/camVideo";
-                recordedVideoTimestampFilename = recordedVideoFilename+"Timestamp.txt";
+                recordedVideoFilename = record_folder+"/"+record_name+"_cam";
+                recordedVideoTimestampFilename = record_folder+"/"+record_name+"_camTimestamp.txt";
                 if(videoContainerType == VideoContainerType::MP4)
                     recordedVideoFilename += ".mp4";
                 qDebug() << "stop recording and save to file: " << recordedVideoFilename.c_str();
@@ -271,7 +271,7 @@ void MainWindow::questThreadFunc()
     questVideoMngr->attachSource(videoSrc);
     bool was_recording = recording;
     if(recording)
-        questVideoMngr->setRecording(record_folder.c_str(), "questVid");
+        questVideoMngr->setRecording(record_folder.c_str(), record_name.c_str());
     while(!questInput->closed)
     {
         if(was_recording != recording)
@@ -281,7 +281,7 @@ void MainWindow::questThreadFunc()
             videoSrc->Connect(questIpAddress.c_str());
             questVideoMngr->attachSource(videoSrc);
             if(recording)
-                questVideoMngr->setRecording(record_folder.c_str(), "questVid");
+                questVideoMngr->setRecording(record_folder.c_str(), record_name.c_str());
             was_recording = recording;
         }
         questVideoMngr->VideoTickImpl(true);

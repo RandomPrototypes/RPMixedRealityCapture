@@ -72,11 +72,12 @@ void PostProcessingOptionPage::setPage()
     durationLabel->setText("00:00 / 00:00");
     durationLabel->setMaximumWidth(100);
 
-    QPushButton *startEncodingButton = new QPushButton();
+    startEncodingButton = new QPushButton();
     startEncodingButton->setText("start encoding");
+    startEncodingButton->setMaximumWidth(200);
 
     hlayout1->addWidget(selectPlayAreaButton);
-    hlayout1->addWidget(startEncodingButton);
+    //hlayout1->addWidget(startEncodingButton);
 
     backgroundSubtractorOptionLayout = new QGridLayout();
 
@@ -100,6 +101,7 @@ void PostProcessingOptionPage::setPage()
     blackBackgroundCheckbox = new QCheckBox;
     blackBackgroundCheckbox->setText("black background");
 
+    preview_checkbox_layout->addWidget(previewLabel);
     preview_checkbox_layout->addWidget(camImgCheckbox);
     preview_checkbox_layout->addWidget(questImgCheckbox);
     preview_checkbox_layout->addWidget(matteImgCheckbox);
@@ -112,6 +114,7 @@ void PostProcessingOptionPage::setPage()
     win->postProcessPreviewWidget->setImg(cv::Mat());
 
     QHBoxLayout *bottom_hlayout = new QHBoxLayout();
+    bottom_hlayout->addWidget(startEncodingButton);
     bottom_hlayout->addWidget(playButton);
     bottom_hlayout->addWidget(stopButton);
     bottom_hlayout->addWidget(durationLabel);
@@ -131,8 +134,7 @@ void PostProcessingOptionPage::setPage()
 
     layout->addLayout(hlayout1, 4, 0, 1, 3);
 
-    layout->addWidget(previewLabel, 5, 0);
-    layout->addLayout(preview_checkbox_layout, 5, 1);
+    layout->addLayout(preview_checkbox_layout, 5, 0, 1, 2);
 
     layout->addWidget(win->postProcessPreviewWidget, 6, 0, 3, 3);
 
@@ -144,6 +146,8 @@ void PostProcessingOptionPage::setPage()
     connect(questRecordingFileBrowseButton,SIGNAL(clicked()),this,SLOT(onClickQuestRecordingFileBrowseButton()));
     connect(camRecordingFileBrowseButton,SIGNAL(clicked()),this,SLOT(onClickCamRecordingFileBrowseButton()));
     connect(listBackgroundSubtractorCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(onSelectBackgroundSubtractorCombo(int)));
+
+    connect(startEncodingButton,SIGNAL(clicked()),this,SLOT(onClickStartEncodingButton()));
 
     connect(camImgCheckbox,SIGNAL(clicked()),this,SLOT(onClickCamImgCheckbox()));
     connect(questImgCheckbox,SIGNAL(clicked()),this,SLOT(onClickQuestImgCheckbox()));
@@ -208,17 +212,37 @@ void PostProcessingOptionPage::refreshBackgroundSubtractorOption()
 
 void PostProcessingOptionPage::onTimer()
 {
-    if(state == PostProcessingState::previewPlay)
-    {
+    if(state == PostProcessingState::previewPlay) {
         uint64_t timestamp = libQuestMR::getTimestampMs() - startPlayTimestamp + listCameraTimestamp[0];
         readCameraFrame(timestamp);
         updatePreviewImg();
+    } else if(state == PostProcessingState::encodingStarted) {
+        updatePreviewImg();
+        updateDurationLabel();
+    } else if(state == PostProcessingState::encodingStopped || state == PostProcessingState::encodingFinished) {
+        QMessageBox msgBox;
+        if(state == PostProcessingState::encodingStopped)
+            msgBox.setText("encoding stopped!!");
+        else msgBox.setText("encoding finished!!");
+        msgBox.exec();
+        state = PostProcessingState::previewPause;
+        playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPlay));
+        updateRecordingFile();
     }
 }
 
 uint64_t absdiff(uint64_t t1, uint64_t t2)
 {
     return t2 > t1 ? t2-t1 : t1-t2;
+}
+
+void PostProcessingOptionPage::updateDurationLabel()
+{
+    int currentTime = (int)(listCameraTimestamp[cameraFrameId] - listCameraTimestamp[0])/1000;
+    int duration = (int)(listCameraTimestamp[listCameraTimestamp.size()-1] - listCameraTimestamp[0])/1000;
+    char txt[255];
+    sprintf(txt, "%02d:%02d / %02d:%02d", currentTime/60, currentTime%60, duration/60, duration%60);
+    durationLabel->setText(txt);
 }
 
 void PostProcessingOptionPage::readCameraFrame(uint64_t timestamp)
@@ -237,16 +261,7 @@ void PostProcessingOptionPage::readCameraFrame(uint64_t timestamp)
             currentFrameQuest = questVideoMngr->getMostRecentImg(&quest_timestamp);
         }
     }
-    int currentTime = (int)(listCameraTimestamp[cameraFrameId] - listCameraTimestamp[0])/1000;
-    int duration = (int)(listCameraTimestamp[listCameraTimestamp.size()-1] - listCameraTimestamp[0])/1000;
-    char txt[255];
-    sprintf(txt, "%02d:%02d / %02d:%02d", currentTime/60, currentTime%60, duration/60, duration%60);
-    durationLabel->setText(txt);
-}
-
-static bool endsWith(const std::string& str, const std::string& suffix)
-{
-    return str.size() >= suffix.size() && 0 == str.compare(str.size()-suffix.size(), suffix.size(), suffix);
+    updateDurationLabel();
 }
 
 bool PostProcessingOptionPage::loadCameraTimestamps(std::string filename)
@@ -268,71 +283,90 @@ bool PostProcessingOptionPage::loadCameraTimestamps(std::string filename)
     return true;
 }
 
-
-void PostProcessingOptionPage::updateRecordingFile()
+bool PostProcessingOptionPage::loadCameraRecordingFile()
 {
     if(capCameraVid != NULL) {
         capCameraVid->release();
         capCameraVid = NULL;
     }
+    cameraFrameId = 0;
+
     std::string camFilename = camRecordingFileEdit->text().toStdString();
-    std::string questFilename = questRecordingFileEdit->text().toStdString();
     if(!endsWith(camFilename, "_cam.mp4")) {
         if(camFilename.size() > 0) {
             QMessageBox msgBox;
             msgBox.setText("camera files should ends with _cam.mp4");
             msgBox.exec();
         }
-        return ;
+        return false;
     }
-    if(questFilename.size() > 0 && !endsWith(questFilename, "_quest.questMRVideo"))
-    {
-        QMessageBox msgBox;
-        msgBox.setText("quest files should ends with _quest.questMRVideo");
-        msgBox.exec();
-        questFilename = "";
-        questRecordingFileEdit->setText("");
-    }
-    std::string camTimestampFilename = camFilename.substr(0, camFilename.size()-7)+"timestamp.txt";
+    std::string camTimestampFilename = camFilename.substr(0, camFilename.size()-4)+"Timestamp.txt";
     if(!loadCameraTimestamps(camTimestampFilename)) {
         QMessageBox msgBox;
         msgBox.setText(("can not load camera timestamps '"+camTimestampFilename+"'").c_str());
         msgBox.exec();
-        return ;
+        return false;
     }
-
     capCameraVid = std::shared_ptr<cv::VideoCapture>(new cv::VideoCapture(camFilename));
     if(!capCameraVid->isOpened()) {
         QMessageBox msgBox;
         msgBox.setText("Can not connect to the quest...");
         msgBox.exec();
         capCameraVid = NULL;
-        return ;
+        return false;
     }
-    if(questFilename.size() > 0) {
-        if(questVideoMngr != NULL) {
-            questVideoMngr->detachSource();
-            questVideoSrc->close();
-            questVideoMngr = NULL;
-            questVideoSrc = NULL;
-        }
-        questVideoMngr = libQuestMR::createQuestVideoMngr();
-        questVideoSrc = libQuestMR::createQuestVideoSourceFile();
-        questVideoSrc->open(questFilename.c_str());
-        questVideoMngr->attachSource(questVideoSrc);
-        std::string questTimestampFilename = questFilename.substr(0, questFilename.size()-19)+"_questTimestamp.txt";
-        qDebug() << questTimestampFilename.c_str();
-        questVideoMngr->setRecordedTimestampFile(questTimestampFilename.c_str());
-        currentFrameQuest = cv::Mat();
-        while(questVideoSrc->isValid() && currentFrameQuest.cols < 100) {
-            qDebug() << "videoTickImpl";
-            questVideoMngr->VideoTickImpl();
-            uint64_t quest_timestamp;
-            currentFrameQuest = questVideoMngr->getMostRecentImg(&quest_timestamp);
-        }
+    return true;
+}
+
+bool PostProcessingOptionPage::loadQuestRecordingFile()
+{
+    if(questVideoMngr != NULL) {
+        questVideoMngr->detachSource();
+        questVideoSrc->close();
+        questVideoMngr = NULL;
+        questVideoSrc = NULL;
     }
-    cameraFrameId = 0;
+    currentFrameQuest = cv::Mat();
     questFrameId = 0;
+
+    std::string questFilename = questRecordingFileEdit->text().toStdString();
+    if(questFilename.size() > 0 && !endsWith(questFilename, ".questMRVideo"))
+    {
+        QMessageBox msgBox;
+        msgBox.setText("quest files should ends with .questMRVideo");
+        msgBox.exec();
+        questFilename = "";
+        questRecordingFileEdit->setText("");
+        return false;
+    }
+    if(questFilename.size() == 0)
+        return false;
+    questVideoMngr = libQuestMR::createQuestVideoMngr();
+    questVideoSrc = libQuestMR::createQuestVideoSourceFile();
+    questVideoSrc->open(questFilename.c_str());
+    questVideoMngr->attachSource(questVideoSrc);
+    std::string questTimestampFilename = questFilename.substr(0, questFilename.size()-13)+"_questTimestamp.txt";
+    qDebug() << questTimestampFilename.c_str();
+    questVideoMngr->setRecordedTimestampFile(questTimestampFilename.c_str());
+
+    return true;
+}
+
+void PostProcessingOptionPage::updateRecordingFile()
+{
+    bool camValid = loadCameraRecordingFile();
+    bool questValid = loadQuestRecordingFile();
+
+    if(!camValid || !questValid)
+        return ;
+
+    while(questVideoSrc->isValid() && currentFrameQuest.cols < 100) {
+        qDebug() << "videoTickImpl";
+        questVideoMngr->VideoTickImpl();
+        uint64_t quest_timestamp;
+        currentFrameQuest = questVideoMngr->getMostRecentImg(&quest_timestamp);
+    }
+
     (*capCameraVid) >> currentFrameCam;
     startPlayTimestamp = libQuestMR::getTimestampMs();
     readCameraFrame(listCameraTimestamp[0]);
@@ -355,8 +389,8 @@ void PostProcessingOptionPage::onClickQuestRecordingFileBrowseButton()
             questRecordingFileEdit->setText(filenames[0]);
 
             std::string questFilename = filenames[0].toStdString();
-            if(camRecordingFileEdit->text().size() == 0 && endsWith(questFilename, "_quest.questMRVideo")) {
-                std::string camFilename = questFilename.substr(0, questFilename.size() - 19) + "_cam.mp4";
+            if(camRecordingFileEdit->text().size() == 0 && endsWith(questFilename, ".questMRVideo")) {
+                std::string camFilename = questFilename.substr(0, questFilename.size() - 13) + "_cam.mp4";
                 if(std::ifstream(camFilename).good())
                     camRecordingFileEdit->setText(camFilename.c_str());
             }
@@ -381,7 +415,7 @@ void PostProcessingOptionPage::onClickCamRecordingFileBrowseButton()
 
             std::string camFilename = filenames[0].toStdString();
             if(questRecordingFileEdit->text().size() == 0 && endsWith(camFilename, "_cam.mp4")) {
-                std::string questFilename = camFilename.substr(0, camFilename.size() - 8) + "_quest.questMRVideo";
+                std::string questFilename = camFilename.substr(0, camFilename.size() - 8) + ".questMRVideo";
                 if(std::ifstream(questFilename).good())
                     questRecordingFileEdit->setText(questFilename.c_str());
             }
@@ -414,6 +448,15 @@ cv::Mat alphaBlendingMat(const cv::Mat& img1, const cv::Mat& img2, const cv::Mat
 
 void PostProcessingOptionPage::updatePreviewImg()
 {
+    if(state == PostProcessingState::encodingStarted)
+    {
+        cv::Mat img;
+        encodingMutex.lock();
+        img = encodedFrame.clone();
+        encodingMutex.unlock();
+        win->postProcessPreviewWidget->setImg(img);
+        return ;
+    }
     if(cameraFrameId == 0 && backgroundSubtractor != NULL)
         backgroundSubtractor->restart();
     cv::Size size(1280,720);
@@ -492,7 +535,13 @@ void PostProcessingOptionPage::onClickPlayButton()
 {
     if(listCameraTimestamp.size() > 0)
     {
-        if(state == PostProcessingState::previewPlay) {
+        if(state == PostProcessingState::encodingStarted) {
+            playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPlay));
+            state = PostProcessingState::encodingPaused;
+        } else if(state == PostProcessingState::encodingPaused) {
+            playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPause));
+            state = PostProcessingState::encodingStarted;
+        } else if(state == PostProcessingState::previewPlay) {
             playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPlay));
             state = PostProcessingState::previewPause;
         } else {
@@ -506,6 +555,145 @@ void PostProcessingOptionPage::onClickPlayButton()
 void PostProcessingOptionPage::onClickStopButton()
 {
     playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPlay));
-    state = PostProcessingState::previewPause;
-    updateRecordingFile();
+    if(state == PostProcessingState::encodingStarted) {
+        state = PostProcessingState::encodingStopped;
+    } else {
+        state = PostProcessingState::previewPause;
+        updateRecordingFile();
+    }
+}
+
+void PostProcessingOptionPage::encodingThreadFunc()
+{
+    int bitrate = 8000000;
+
+    videoEncoder = RPCameraInterface::createVideoEncoder();
+    videoEncoder->setUseFrameTimestamp(true);
+    std::vector<float> remainingAudio;
+
+    bool firstFrame = true;
+    uint64_t last_timestamp = 0;
+    int last_frameId = -1;
+
+    (*capCameraVid) >> currentFrameCam;
+    cameraFrameId = 0;
+
+    while(state != PostProcessingState::encodingStopped && questVideoSrc->isValid())
+    {
+        if(state == PostProcessingState::encodingPaused) {
+            while(state == PostProcessingState::encodingPaused)
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            continue;
+        }
+        cv::Mat questImg;
+        uint64_t quest_timestamp;
+        int frameId = last_frameId;
+        while(frameId == last_frameId && questVideoSrc->isValid()) {
+            questVideoMngr->VideoTickImpl();
+            questImg = questVideoMngr->getMostRecentImg(&quest_timestamp, &frameId);
+        }
+        if(!questVideoSrc->isValid())
+            break;
+        while(cameraFrameId+1 < listCameraTimestamp.size() && absdiff(quest_timestamp, listCameraTimestamp[cameraFrameId+1]) < absdiff(quest_timestamp, listCameraTimestamp[cameraFrameId]))
+        {
+            (*capCameraVid) >> currentFrameCam;
+            cameraFrameId++;
+        }
+        libQuestMR::QuestAudioData **listAudioData;
+        int nbAudioFrames = questVideoMngr->getMostRecentAudio(&listAudioData);
+        if(questImg.empty())
+            continue;
+
+        if(!firstFrame && quest_timestamp <= last_timestamp)
+            continue;
+
+        cv::Mat fgMask;
+        backgroundSubtractor->apply(currentFrameCam, fgMask);
+        cv::Mat img = libQuestMR::composeMixedRealityImg(questImg, currentFrameCam, fgMask);
+        //cv::Mat img = questImg(cv::Rect(0,0,questImg.cols/2,questImg.rows)).clone();
+
+        if(firstFrame)
+            videoEncoder->open(encodingFilename.c_str(), img.rows, img.cols, 30, "", bitrate);
+        std::vector<float> audioData = remainingAudio;
+        remainingAudio.clear();
+        int recordSampleRate = 44100;
+        if(nbAudioFrames > 0){
+            for(int i = 0; i < nbAudioFrames; i++) {
+                int size = listAudioData[i]->getDataLength() / sizeof(float);
+                const float *data = (const float*)listAudioData[i]->getData();
+                int size2 = size;// * recordSampleRate / listAudioData[i]->getSampleRate();
+                for(int j = 0; j < size2; j++)
+                    audioData.push_back(data[j*size/size2]);
+            }
+
+            int nbAudioPacket = audioData.size() / 2048;
+            videoEncoder->write_audio(&audioData[0], nbAudioPacket * 2048, listAudioData[0]->getLocalTimestamp());
+            audioData.erase(audioData.begin(), audioData.begin() + nbAudioPacket * 2048);
+        }
+        remainingAudio = audioData;
+        videoEncoder->write(RPCameraInterface::createImageDataFromMat(img, quest_timestamp, false));
+
+        encodingMutex.lock();
+        encodedFrame = img.clone();
+        encodingMutex.unlock();
+
+        firstFrame = false;
+        last_timestamp = quest_timestamp;
+    }
+    videoEncoder->release();
+    videoEncoder = NULL;
+
+    if(state != PostProcessingState::encodingStopped)
+        state = PostProcessingState::encodingFinished;
+}
+
+void PostProcessingOptionPage::onClickStartEncodingButton()
+{
+    if(state == PostProcessingState::encodingStarted || state == PostProcessingState::encodingPaused) {
+        onClickStopButton();
+        return ;
+    }
+    bool camValid = loadCameraRecordingFile();
+    bool questValid = loadQuestRecordingFile();
+
+    if(!camValid || !questValid) {
+        QMessageBox msgBox;
+        msgBox.setText("You must select the camera and quest recording files");
+        msgBox.exec();
+        return ;
+    }
+
+    if(backgroundSubtractor == NULL) {
+        QMessageBox msgBox;
+        msgBox.setText("You must select a background subtraction method");
+        msgBox.exec();
+        return ;
+    }
+
+    QFileDialog dialog(NULL);
+    dialog.setFileMode(QFileDialog::AnyFile);
+    dialog.setAcceptMode(QFileDialog::AcceptSave);
+    dialog.setNameFilter(tr("video file (*.mp4)"));
+    dialog.setOption(QFileDialog::DontUseNativeDialog, true);
+
+    if (dialog.exec())
+    {
+        QStringList filenames = dialog.selectedFiles();
+        if(filenames.size() == 1)
+        {
+            state = PostProcessingState::encodingStarted;
+
+            encodingFilename = filenames[0].toStdString();
+            qDebug() << encodingFilename.c_str();
+
+            startEncodingButton->setText("stop encoding");
+            playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPause));
+
+            encodingThread = new std::thread([&]()
+                {
+                    encodingThreadFunc();
+                }
+            );
+        }
+    }
 }

@@ -3,6 +3,7 @@
 
 #include "mainwindow.h"
 #include <libQuestMR/BackgroundSubtractor.h>
+#include <RPCameraInterface/VideoEncoder.h>
 #include <QCheckBox>
 
 class PostProcessingOptionPage : public QObject
@@ -13,12 +14,10 @@ public:
 
     void setPage();
     void onTimer();
-    void refreshBackgroundSubtractorOption();
-    void updateRecordingFile();
-    void updatePreviewImg();
 public slots:
     void onClickQuestRecordingFileBrowseButton();
     void onClickCamRecordingFileBrowseButton();
+    void onClickStartEncodingButton();
     void onSelectBackgroundSubtractorCombo(int);
     void onClickCamImgCheckbox();
     void onClickQuestImgCheckbox();
@@ -30,11 +29,22 @@ public slots:
 private:
     bool loadCameraTimestamps(std::string filename);
     void readCameraFrame(uint64_t timestamp);
+    void encodingThreadFunc();
+    void updateDurationLabel();
+    void refreshBackgroundSubtractorOption();
+    bool loadCameraRecordingFile();
+    bool loadQuestRecordingFile();
+    void updateRecordingFile();
+    void updatePreviewImg();
 
     enum class PostProcessingState
     {
         previewPlay,
         previewPause,
+        encodingStarted,
+        encodingPaused,
+        encodingStopped,
+        encodingFinished,
     };
 
     MainWindow *win;
@@ -46,6 +56,7 @@ private:
 
     QToolButton *playButton;
     QLabel *durationLabel;
+    QPushButton *startEncodingButton;
 
     QCheckBox *camImgCheckbox;
     QCheckBox *questImgCheckbox;
@@ -62,7 +73,13 @@ private:
     std::vector<uint64_t> listCameraTimestamp;
     int cameraFrameId, questFrameId;
 
-    PostProcessingState state;
+    std::shared_ptr<RPCameraInterface::VideoEncoder> videoEncoder;
+    std::string encodingFilename;
+    std::thread *encodingThread;
+    cv::Mat encodedFrame;
+    std::mutex encodingMutex;
+
+    volatile PostProcessingState state;
     uint64_t startPlayTimestamp;
 };
 

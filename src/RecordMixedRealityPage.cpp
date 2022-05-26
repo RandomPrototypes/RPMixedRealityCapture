@@ -2,6 +2,7 @@
 #include "RecordMixedRealityPage.h"
 #include "PostProcessingPage.h"
 #include <QDir>
+#include <QFileDialog>
 
 RecordMixedRealityPage::RecordMixedRealityPage(MainWindow *win)
     :win(win)
@@ -61,10 +62,32 @@ void RecordMixedRealityPage::onClickStartRecordingButton()
 {
     if(!win->recording)
     {
-        win->record_folder = "output/"+getCurrentDateTimeStr();
-        QDir().mkdir(win->record_folder.c_str());
-        win->recording = true;
-        startRecordingButton->setText("stop recording");
+        QFileDialog dialog(NULL);
+        dialog.setFileMode(QFileDialog::AnyFile);
+        dialog.setAcceptMode(QFileDialog::AcceptSave);
+        dialog.setNameFilter(tr("quest recording file (*.questMRVideo)"));
+        dialog.setOption(QFileDialog::DontUseNativeDialog, true);
+
+        if (dialog.exec())
+        {
+            QStringList filenames = dialog.selectedFiles();
+            if(filenames.size() == 1)
+            {
+                std::string filename = filenames[0].toStdString();
+                if(!endsWith(filename, ".questMRVideo"))
+                    filename += ".questMRVideo";
+                QFileInfo fi(filename.c_str());
+                qDebug() << fi.absolutePath() << " fn=" << fi.fileName();
+                win->record_folder = fi.absolutePath().toStdString();
+                filename = fi.fileName().toStdString();
+                win->record_name = filename.substr(0, filename.size() - 13);
+                qDebug() << win->record_name.c_str();
+                //win->record_folder = "output/"+getCurrentDateTimeStr();
+                //QDir().mkdir(win->record_folder.c_str());
+                win->recording = true;
+                startRecordingButton->setText("stop recording");
+            }
+        }
     } else {
         win->recording = false;
         win->postProcessingPage->setPage();
