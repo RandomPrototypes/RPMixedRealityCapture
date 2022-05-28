@@ -14,6 +14,7 @@ public:
 
     void setPage();
     void onTimer();
+    void setQuestRecordingFilename(std::string filename);
 public slots:
     void onClickQuestRecordingFileBrowseButton();
     void onClickCamRecordingFileBrowseButton();

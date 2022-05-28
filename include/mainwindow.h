@@ -68,8 +68,10 @@ public:
     void detectChessboardsAndCalibrate();
 
     void startCamera();
+    void startQuestRecorder();
     void startQuestCommunicator();
     void stopCamera();
+    void stopQuestRecorder();
     void stopQuestCommunicator();
 
 
@@ -99,7 +101,7 @@ protected:
     VideoInputMngr *questInput;
     std::string cameraId;
 
-    std::string questIpAddress;
+    std::string questIpAddress = "192.168.10.106";
 
     //QHBoxLayout *hlayout;
 

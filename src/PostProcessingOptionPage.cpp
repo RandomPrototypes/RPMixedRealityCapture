@@ -161,6 +161,17 @@ void PostProcessingOptionPage::setPage()
     refreshBackgroundSubtractorOption();
 }
 
+void PostProcessingOptionPage::setQuestRecordingFilename(std::string questFilename)
+{
+    questRecordingFileEdit->setText(questFilename.c_str());
+    if(camRecordingFileEdit->text().size() == 0 && endsWith(questFilename, ".questMRVideo")) {
+        std::string camFilename = questFilename.substr(0, questFilename.size() - 13) + "_cam.mp4";
+        if(std::ifstream(camFilename).good())
+            camRecordingFileEdit->setText(camFilename.c_str());
+    }
+    updateRecordingFile();
+}
+
 void PostProcessingOptionPage::refreshBackgroundSubtractorOption()
 {
     clearLayout(backgroundSubtractorOptionLayout);
@@ -386,15 +397,8 @@ void PostProcessingOptionPage::onClickQuestRecordingFileBrowseButton()
         QStringList filenames = dialog.selectedFiles();
         if(filenames.size() == 1)
         {
-            questRecordingFileEdit->setText(filenames[0]);
-
             std::string questFilename = filenames[0].toStdString();
-            if(camRecordingFileEdit->text().size() == 0 && endsWith(questFilename, ".questMRVideo")) {
-                std::string camFilename = questFilename.substr(0, questFilename.size() - 13) + "_cam.mp4";
-                if(std::ifstream(camFilename).good())
-                    camRecordingFileEdit->setText(camFilename.c_str());
-            }
-            updateRecordingFile();
+            setQuestRecordingFilename(questFilename);
         }
     }
 }
@@ -547,7 +551,8 @@ void PostProcessingOptionPage::onClickPlayButton()
         } else {
             state = PostProcessingState::previewPlay;
             playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPause));
-            startPlayTimestamp = libQuestMR::getTimestampMs() - (listCameraTimestamp[cameraFrameId]- listCameraTimestamp[0]);
+            if(listCameraTimestamp.size() > 0)
+                startPlayTimestamp = libQuestMR::getTimestampMs() - (listCameraTimestamp[cameraFrameId]- listCameraTimestamp[0]);
         }
     }
 }
@@ -588,14 +593,17 @@ void PostProcessingOptionPage::encodingThreadFunc()
         cv::Mat questImg;
         uint64_t quest_timestamp;
         int frameId = last_frameId;
-        while(frameId == last_frameId && questVideoSrc->isValid()) {
+        while((frameId == last_frameId || questImg.empty()) && questVideoSrc->isValid()) {
             questVideoMngr->VideoTickImpl();
             questImg = questVideoMngr->getMostRecentImg(&quest_timestamp, &frameId);
+            qDebug() << "timestamp: " << quest_timestamp << ", frameId: " << frameId;
         }
         if(!questVideoSrc->isValid())
             break;
         while(cameraFrameId+1 < listCameraTimestamp.size() && absdiff(quest_timestamp, listCameraTimestamp[cameraFrameId+1]) < absdiff(quest_timestamp, listCameraTimestamp[cameraFrameId]))
         {
+            qDebug() << "target timestamp : " << quest_timestamp;
+            qDebug() << "currentTimestamp : " << listCameraTimestamp[cameraFrameId];
             (*capCameraVid) >> currentFrameCam;
             cameraFrameId++;
         }
@@ -653,6 +661,7 @@ void PostProcessingOptionPage::onClickStartEncodingButton()
         onClickStopButton();
         return ;
     }
+    state = PostProcessingState::encodingPaused;
     bool camValid = loadCameraRecordingFile();
     bool questValid = loadQuestRecordingFile();
 

@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "RecordMixedRealityPage.h"
 #include "PostProcessingPage.h"
+#include "PostProcessingOptionPage.h"
 #include <QDir>
 #include <QFileDialog>
 
@@ -45,17 +46,8 @@ void RecordMixedRealityPage::setPage()
 
     connect(startRecordingButton,SIGNAL(clicked()),this,SLOT(onClickStartRecordingButton()));
 
-    win->videoInput->videoThread = new std::thread([&]()
-        {
-            win->videoThreadFunc(win->cameraId);
-        }
-    );
-
-    win->questInput->videoThread = new std::thread([&]()
-        {
-            win->questThreadFunc();
-        }
-    );
+    win->startCamera();
+    win->startQuestRecorder();
 }
 
 void RecordMixedRealityPage::onClickStartRecordingButton()
@@ -90,15 +82,13 @@ void RecordMixedRealityPage::onClickStartRecordingButton()
         }
     } else {
         win->recording = false;
-        win->postProcessingPage->setPage();
-        delete win->videoInput;
-        delete win->questInput;
-        win->camPreviewWidget = NULL;
-        win->questPreviewWidget = NULL;
-        win->postProcessingThread = new std::thread([&]()
-        {
-            win->postProcessingPage->postProcessThreadFunc();
-        });
+        while(!win->recording_finished)
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        win->stopCamera();
+        win->stopQuestRecorder();
+
+        win->postProcessingOptionPage->setPage();
+        win->postProcessingOptionPage->setQuestRecordingFilename(win->record_folder+"/"+win->record_name+".questMRVideo");
     }
 }
 
@@ -108,6 +98,11 @@ void RecordMixedRealityPage::onTimer()
     {
         cv::Mat img = win->videoInput->getImgCopy();
         win->camPreviewWidget->setImg(img);
+    }
+    if(win->questInput->hasNewImg && win->questPreviewWidget != NULL)
+    {
+        cv::Mat img = win->questInput->getImgCopy();
+        win->questPreviewWidget->setImg(img(cv::Rect(0,0,img.cols/2,img.rows)));
     }
 }
 

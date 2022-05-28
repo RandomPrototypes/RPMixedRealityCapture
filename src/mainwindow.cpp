@@ -318,12 +318,6 @@ void MainWindow::onTimer()
         postProcessingPage->onTimer();
     else if(currentPageName == PageName::postProcessingOption)
         postProcessingOptionPage->onTimer();
-
-    if(questInput->hasNewImg && questPreviewWidget != NULL)
-    {
-        cv::Mat img = questInput->getImgCopy();
-        questPreviewWidget->setImg(img);
-    }
 }
 
 void MainWindow::onClickStartButton()
@@ -350,6 +344,17 @@ void MainWindow::startCamera()
     }
 }
 
+void MainWindow::startQuestRecorder()
+{
+    if(questInput->videoThread == NULL) {
+        questInput->videoThread = new std::thread([&]()
+            {
+                questThreadFunc();
+            }
+        );
+    }
+}
+
 void MainWindow::startQuestCommunicator()
 {
     if(questCommunicatorThread != NULL) {
@@ -370,6 +375,15 @@ void MainWindow::stopCamera()
         videoInput->closed = true;
         videoInput->videoThread->join();
         videoInput->videoThread = NULL;
+    }
+}
+
+void MainWindow::stopQuestRecorder()
+{
+    if(questInput->videoThread != NULL) {
+        questInput->closed = true;
+        questInput->videoThread->join();
+        questInput->videoThread = NULL;
     }
 }
 

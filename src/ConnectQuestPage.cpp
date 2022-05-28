@@ -29,7 +29,7 @@ void ConnectQuestPage::setPage()
     ipAddressLabel->setText("ip address: ");
     ipAddressField = new QLineEdit();
     ipAddressField->setFixedWidth(200);
-    ipAddressField->setText("192.168.10.105");
+    ipAddressField->setText(win->questIpAddress.c_str());//"192.168.10.105");
     ipAddressLayout->addWidget(ipAddressLabel);
     ipAddressLayout->addWidget(ipAddressField);
 
