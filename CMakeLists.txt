@@ -33,6 +33,29 @@ find_package(OpenCV REQUIRED)
 find_package(RPCameraInterface REQUIRED)
 find_package(libQuestMR REQUIRED)
 
+if(WIN32)
+   SET(FFMPEG_DIR "" CACHE STRING "ffmpeg dir")
+   SET(FFMPEG_INCLUDE_DIR "" CACHE STRING "ffmpeg include dir")
+   SET(FFMPEG_LIB_DIR "" CACHE STRING "ffmpeg lib dir")
+   if(FFMPEG_DIR AND (NOT FFMPEG_INCLUDE_DIR))
+          set(FFMPEG_INCLUDE_DIR ${FFMPEG_DIR}/include CACHE STRING "ffmpeg include dir" FORCE)
+   endif()
+   if(FFMPEG_DIR AND (NOT FFMPEG_LIB_DIR))
+          set(FFMPEG_LIB_DIR ${FFMPEG_DIR}/lib CACHE STRING "ffmpeg lib dir" FORCE)
+   endif()
+   include_directories(${FFMPEG_INCLUDE_DIR})
+   link_directories(${FFMPEG_LIB_DIR})
+else()
+   find_package(PkgConfig REQUIRED)
+   pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET libavdevice libavfilter libavformat libavcodec libswresample libswscale libavutil)
+   get_cmake_property(_variableNames VARIABLES)
+   list (SORT _variableNames)
+   foreach (_variableName ${_variableNames})
+       message(STATUS "${_variableName}=${${_variableName}}")
+   endforeach()
+   include_directories(${LIBAV_INCLUDE_DIRS})
+endif()
+
 set(PROJECT_SOURCES
         include/mainwindow.h
         include/Util.hpp
@@ -100,6 +123,16 @@ endif()
 target_link_libraries(RPMixedRealityCapture PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Multimedia ${OpenCV_LIBS})
 
 target_link_libraries(RPMixedRealityCapture PRIVATE BufferedSocket RPCameraInterface libQuestMR)
+
+if(WIN32)
+        if(MSVC)
+                target_link_libraries(RPMixedRealityCapture PRIVATE avdevice avfilter avformat avcodec swresample swscale avutil)
+        else()
+                target_link_libraries(RPMixedRealityCapture PRIVATE libavdevice libavfilter libavformat libavcodec libswresample libswscale libavutil)
+        endif()
+else()
+        target_link_libraries(RPMixedRealityCapture PRIVATE PkgConfig::LIBAV)
+endif()
 
 set_target_properties(RPMixedRealityCapture PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
