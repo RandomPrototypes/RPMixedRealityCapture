@@ -12,7 +12,7 @@ class PostProcessingOptionPage : public QObject
 public:
     PostProcessingOptionPage(MainWindow *win);
 
-    void setPage();
+    void setPage(bool isLivePreview = false);
     void onTimer();
     void setQuestRecordingFilename(std::string filename);
 public slots:
@@ -27,6 +27,9 @@ public slots:
     void onClickBlackBackgroundCheckbox();
     void onClickPlayButton();
     void onClickStopButton();
+    void onClickSelectPlayAreaButton();
+    void onClickPreviewWidget();
+    void onClickSavePreviewSettingButton();
 private:
     bool loadCameraTimestamps(std::string filename);
     void readCameraFrame(uint64_t timestamp);
@@ -37,6 +40,14 @@ private:
     bool loadQuestRecordingFile();
     void updateRecordingFile();
     void updatePreviewImg();
+    void updatePlayArea();
+
+    enum class SelectShapeState
+    {
+        noSelection,
+        selecting,
+        selectionFinished,
+    };
 
     enum class PostProcessingState
     {
@@ -58,6 +69,7 @@ private:
     QToolButton *playButton;
     QLabel *durationLabel;
     QPushButton *startEncodingButton;
+    QPushButton *selectPlayAreaButton;
 
     QCheckBox *camImgCheckbox;
     QCheckBox *questImgCheckbox;
@@ -79,9 +91,17 @@ private:
     std::thread *encodingThread;
     cv::Mat encodedFrame;
     std::mutex encodingMutex;
+    cv::Size videoSize;
+
+    std::vector<cv::Point2d> playAreaShape;
+    cv::Rect playAreaROI;
+    cv::Mat playAreaMask;
 
     volatile PostProcessingState state;
+    volatile SelectShapeState selectShapeState;
     uint64_t startPlayTimestamp;
+
+    bool isLivePreview;
 };
 
 

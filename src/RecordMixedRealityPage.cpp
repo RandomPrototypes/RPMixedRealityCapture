@@ -97,11 +97,13 @@ void RecordMixedRealityPage::onTimer()
     if(win->videoInput->hasNewImg)
     {
         cv::Mat img = win->videoInput->getImgCopy();
+        qDebug() << "cam " << img.cols << " " << img.rows;
         win->camPreviewWidget->setImg(img);
     }
     if(win->questInput->hasNewImg && win->questPreviewWidget != NULL)
     {
         cv::Mat img = win->questInput->getImgCopy();
+        qDebug() << "quest " << img.cols << " " << img.rows;
         win->questPreviewWidget->setImg(img(cv::Rect(0,0,img.cols/2,img.rows)));
     }
 }

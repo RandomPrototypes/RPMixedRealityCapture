@@ -2,6 +2,7 @@
 #include "CameraSelectPage.h"
 #include "CalibrationOptionPage.h"
 #include "RecordMixedRealityPage.h"
+#include "PostProcessingOptionPage.h"
 #include <QRadioButton>
 using namespace RPCameraInterface;
 
@@ -189,6 +190,7 @@ void CameraSelectPage::onClickSelectCameraButton()
     if(win->isCalibrationSection)
         win->calibrationOptionPage->setPage();
     else {
-        win->recordMixedRealityPage->setPage();
+        //win->recordMixedRealityPage->setPage();
+        win->postProcessingOptionPage->setPage(true);
     }
 }

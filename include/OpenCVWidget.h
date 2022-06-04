@@ -19,6 +19,7 @@ public:
 
     cv::Point2d localToImgPos(cv::Point2d p);
     void updateImg();
+    void updateViewSize();
 
     cv::Mat img;
     cv::Size viewSize;

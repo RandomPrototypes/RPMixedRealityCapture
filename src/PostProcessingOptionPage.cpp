@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "PostProcessingOptionPage.h"
+#include "RecordMixedRealityPage.h"
 #include <RPCameraInterface/VideoEncoder.h>
 #include <RPCameraInterface/OpenCVConverter.h>
 #include <QFileDialog>
@@ -18,35 +19,86 @@ PostProcessingOptionPage::PostProcessingOptionPage(MainWindow *win)
 {
 }
 
-void PostProcessingOptionPage::setPage()
+void PostProcessingOptionPage::setPage(bool isLivePreview)
 {
+    this->isLivePreview = isLivePreview;
+    videoSize = cv::Size(1280,720);
     win->currentPageName = MainWindow::PageName::postProcessingOption;
     win->clearMainWidget();
 
     state = PostProcessingState::previewPause;
+    selectShapeState = SelectShapeState::noSelection;
 
     layout = new QGridLayout();
     layout->setContentsMargins(10,50,10,50);
 
     QLabel *postProcessingLabel = new QLabel;
-    postProcessingLabel->setText("Post processing: ");
 
-    QLabel *questRecordingFileLabel = new QLabel;
-    questRecordingFileLabel->setText("Quest recording file: ");
+    if(isLivePreview) {
+        postProcessingLabel->setText("Preview settings: ");
+        playButton = NULL;
+        durationLabel = NULL;
+        startEncodingButton = NULL;
+        QPushButton *savePreviewSettingButton = new QPushButton();
+        savePreviewSettingButton->setText("save preview settings");
+        layout->addWidget(savePreviewSettingButton, 10, 0);
+        connect(savePreviewSettingButton,SIGNAL(clicked()),this,SLOT(onClickSavePreviewSettingButton()));
+        win->startCamera();
+    } else {
+        postProcessingLabel->setText("Post processing: ");
+        QLabel *questRecordingFileLabel = new QLabel;
+        questRecordingFileLabel->setText("Quest recording file: ");
 
-    questRecordingFileEdit = new QLineEdit();
+        questRecordingFileEdit = new QLineEdit();
 
-    QPushButton *questRecordingFileBrowseButton = new QPushButton();
-    questRecordingFileBrowseButton->setText("browse");
+        QPushButton *questRecordingFileBrowseButton = new QPushButton();
+        questRecordingFileBrowseButton->setText("browse");
 
-    QLabel *camRecordingFileLabel = new QLabel;
-    camRecordingFileLabel->setText("Camera recording file: ");
+        QLabel *camRecordingFileLabel = new QLabel;
+        camRecordingFileLabel->setText("Camera recording file: ");
 
-    camRecordingFileEdit = new QLineEdit();
+        camRecordingFileEdit = new QLineEdit();
+
+        QPushButton *camRecordingFileBrowseButton = new QPushButton();
+        camRecordingFileBrowseButton->setText("browse");
+
+        layout->addWidget(questRecordingFileLabel, 1, 0);
+        layout->addWidget(questRecordingFileEdit, 1, 1);
+        layout->addWidget(questRecordingFileBrowseButton, 1, 2);
+
+        layout->addWidget(camRecordingFileLabel, 2, 0);
+        layout->addWidget(camRecordingFileEdit, 2, 1);
+        layout->addWidget(camRecordingFileBrowseButton, 2, 2);
+
+        connect(questRecordingFileBrowseButton,SIGNAL(clicked()),this,SLOT(onClickQuestRecordingFileBrowseButton()));
+        connect(camRecordingFileBrowseButton,SIGNAL(clicked()),this,SLOT(onClickCamRecordingFileBrowseButton()));
 
 
-    QPushButton *camRecordingFileBrowseButton = new QPushButton();
-    camRecordingFileBrowseButton->setText("browse");
+
+        startEncodingButton = new QPushButton();
+        startEncodingButton->setText("start encoding");
+        startEncodingButton->setMaximumWidth(200);
+
+        playButton = new QToolButton();
+        playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPlay));
+
+        QToolButton *stopButton = new QToolButton();
+        stopButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaStop));
+
+        durationLabel = new QLabel();
+        durationLabel->setText("00:00 / 00:00");
+        durationLabel->setMaximumWidth(100);
+
+        QHBoxLayout *bottom_hlayout = new QHBoxLayout();
+        bottom_hlayout->addWidget(startEncodingButton);
+        bottom_hlayout->addWidget(playButton);
+        bottom_hlayout->addWidget(stopButton);
+        bottom_hlayout->addWidget(durationLabel);
+        layout->addLayout(bottom_hlayout, 10, 0, 1, 3);
+        connect(playButton,SIGNAL(clicked()),this,SLOT(onClickPlayButton()));
+        connect(stopButton,SIGNAL(clicked()),this,SLOT(onClickStopButton()));
+        connect(startEncodingButton,SIGNAL(clicked()),this,SLOT(onClickStartEncodingButton()));
+    }
 
     QLabel *backgroundSubtractorLabel = new QLabel;
     backgroundSubtractorLabel->setText("background subtractor method:");
@@ -56,25 +108,8 @@ void PostProcessingOptionPage::setPage()
 
     QHBoxLayout *hlayout1 = new QHBoxLayout();
 
-    QPushButton *selectPlayAreaButton = new QPushButton();
+    selectPlayAreaButton = new QPushButton();
     selectPlayAreaButton->setText("select play area");
-
-    //QPushButton *playButton = new QPushButton();
-    //playButton->setText("play");
-
-    playButton = new QToolButton();
-    playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPlay));
-
-    QToolButton *stopButton = new QToolButton();
-    stopButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaStop));
-
-    durationLabel = new QLabel();
-    durationLabel->setText("00:00 / 00:00");
-    durationLabel->setMaximumWidth(100);
-
-    startEncodingButton = new QPushButton();
-    startEncodingButton->setText("start encoding");
-    startEncodingButton->setMaximumWidth(200);
 
     hlayout1->addWidget(selectPlayAreaButton);
     //hlayout1->addWidget(startEncodingButton);
@@ -113,21 +148,7 @@ void PostProcessingOptionPage::setPage()
 
     win->postProcessPreviewWidget->setImg(cv::Mat());
 
-    QHBoxLayout *bottom_hlayout = new QHBoxLayout();
-    bottom_hlayout->addWidget(startEncodingButton);
-    bottom_hlayout->addWidget(playButton);
-    bottom_hlayout->addWidget(stopButton);
-    bottom_hlayout->addWidget(durationLabel);
-
     layout->addWidget(postProcessingLabel, 0, 0);
-
-    layout->addWidget(questRecordingFileLabel, 1, 0);
-    layout->addWidget(questRecordingFileEdit, 1, 1);
-    layout->addWidget(questRecordingFileBrowseButton, 1, 2);
-
-    layout->addWidget(camRecordingFileLabel, 2, 0);
-    layout->addWidget(camRecordingFileEdit, 2, 1);
-    layout->addWidget(camRecordingFileBrowseButton, 2, 2);
 
     layout->addWidget(backgroundSubtractorLabel, 3, 0);
     layout->addWidget(listBackgroundSubtractorCombo, 3, 1);
@@ -140,14 +161,9 @@ void PostProcessingOptionPage::setPage()
 
     layout->addLayout(backgroundSubtractorOptionLayout, 6, 3, 3, 3);
 
-    layout->addLayout(bottom_hlayout, 10, 0, 1, 3);
     win->mainWidget->setLayout(layout);
 
-    connect(questRecordingFileBrowseButton,SIGNAL(clicked()),this,SLOT(onClickQuestRecordingFileBrowseButton()));
-    connect(camRecordingFileBrowseButton,SIGNAL(clicked()),this,SLOT(onClickCamRecordingFileBrowseButton()));
     connect(listBackgroundSubtractorCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(onSelectBackgroundSubtractorCombo(int)));
-
-    connect(startEncodingButton,SIGNAL(clicked()),this,SLOT(onClickStartEncodingButton()));
 
     connect(camImgCheckbox,SIGNAL(clicked()),this,SLOT(onClickCamImgCheckbox()));
     connect(questImgCheckbox,SIGNAL(clicked()),this,SLOT(onClickQuestImgCheckbox()));
@@ -155,8 +171,9 @@ void PostProcessingOptionPage::setPage()
     connect(greenBackgroundCheckbox,SIGNAL(clicked()),this,SLOT(onClickGreenBackgroundCheckbox()));
     connect(blackBackgroundCheckbox,SIGNAL(clicked()),this,SLOT(onClickBlackBackgroundCheckbox()));
 
-    connect(playButton,SIGNAL(clicked()),this,SLOT(onClickPlayButton()));
-    connect(stopButton,SIGNAL(clicked()),this,SLOT(onClickStopButton()));
+    connect(selectPlayAreaButton,SIGNAL(clicked()),this,SLOT(onClickSelectPlayAreaButton()));
+    connect(win->postProcessPreviewWidget,SIGNAL(clicked()),this,SLOT(onClickPreviewWidget()));
+
 
     refreshBackgroundSubtractorOption();
 }
@@ -187,6 +204,9 @@ void PostProcessingOptionPage::refreshBackgroundSubtractorOption()
             spin->setValue(backgroundSubtractor->getParameterValAsInt(i));
             backgroundSubtractorOptionLayout->addWidget(label, i, 0);
             backgroundSubtractorOptionLayout->addWidget(spin, i, 1);
+            connect(spin,QOverload<int>::of(&QSpinBox::valueChanged),[=](int val){
+                backgroundSubtractor->setParameterVal(i, val);
+            });
         } else if(backgroundSubtractor->getParameterType(i) == libQuestMR::BackgroundSubtractorParamType::ParamTypeBool) {
             QLabel *label = new QLabel;
             label->setText(backgroundSubtractor->getParameterName(i).str().c_str());
@@ -194,6 +214,9 @@ void PostProcessingOptionPage::refreshBackgroundSubtractorOption()
             checkbox->setChecked(backgroundSubtractor->getParameterValAsBool(i));
             backgroundSubtractorOptionLayout->addWidget(label, i, 0);
             backgroundSubtractorOptionLayout->addWidget(checkbox, i, 1);
+            connect(checkbox,&QCheckBox::clicked,[=](){
+                backgroundSubtractor->setParameterVal(i, checkbox->isEnabled());
+            });
         } else if(backgroundSubtractor->getParameterType(i) == libQuestMR::BackgroundSubtractorParamType::ParamTypeColor) {
             QLabel *label = new QLabel;
             label->setText(backgroundSubtractor->getParameterName(i).str().c_str());
@@ -223,22 +246,30 @@ void PostProcessingOptionPage::refreshBackgroundSubtractorOption()
 
 void PostProcessingOptionPage::onTimer()
 {
-    if(state == PostProcessingState::previewPlay) {
-        uint64_t timestamp = libQuestMR::getTimestampMs() - startPlayTimestamp + listCameraTimestamp[0];
-        readCameraFrame(timestamp);
+    if(isLivePreview) {
+        if(win->videoInput->hasNewImg)
+            currentFrameCam = win->videoInput->getImgCopy();
         updatePreviewImg();
-    } else if(state == PostProcessingState::encodingStarted) {
-        updatePreviewImg();
-        updateDurationLabel();
-    } else if(state == PostProcessingState::encodingStopped || state == PostProcessingState::encodingFinished) {
-        QMessageBox msgBox;
-        if(state == PostProcessingState::encodingStopped)
-            msgBox.setText("encoding stopped!!");
-        else msgBox.setText("encoding finished!!");
-        msgBox.exec();
-        state = PostProcessingState::previewPause;
-        playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPlay));
-        updateRecordingFile();
+    } else {
+        if(state == PostProcessingState::previewPlay || state == PostProcessingState::previewPause) {
+            if(state == PostProcessingState::previewPlay) {
+                uint64_t timestamp = libQuestMR::getTimestampMs() - startPlayTimestamp + listCameraTimestamp[0];
+                readCameraFrame(timestamp);
+            }
+            updatePreviewImg();
+        } else if(state == PostProcessingState::encodingStarted) {
+            updatePreviewImg();
+            updateDurationLabel();
+        } else if(state == PostProcessingState::encodingStopped || state == PostProcessingState::encodingFinished) {
+            QMessageBox msgBox;
+            if(state == PostProcessingState::encodingStopped)
+                msgBox.setText("encoding stopped!!");
+            else msgBox.setText("encoding finished!!");
+            msgBox.exec();
+            state = PostProcessingState::previewPause;
+            playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPlay));
+            updateRecordingFile();
+        }
     }
 }
 
@@ -249,11 +280,14 @@ uint64_t absdiff(uint64_t t1, uint64_t t2)
 
 void PostProcessingOptionPage::updateDurationLabel()
 {
-    int currentTime = (int)(listCameraTimestamp[cameraFrameId] - listCameraTimestamp[0])/1000;
-    int duration = (int)(listCameraTimestamp[listCameraTimestamp.size()-1] - listCameraTimestamp[0])/1000;
-    char txt[255];
-    sprintf(txt, "%02d:%02d / %02d:%02d", currentTime/60, currentTime%60, duration/60, duration%60);
-    durationLabel->setText(txt);
+    if(!isLivePreview)
+    {
+        int currentTime = (int)(listCameraTimestamp[cameraFrameId] - listCameraTimestamp[0])/1000;
+        int duration = (int)(listCameraTimestamp[listCameraTimestamp.size()-1] - listCameraTimestamp[0])/1000;
+        char txt[255];
+        sprintf(txt, "%02d:%02d / %02d:%02d", currentTime/60, currentTime%60, duration/60, duration%60);
+        durationLabel->setText(txt);
+    }
 }
 
 void PostProcessingOptionPage::readCameraFrame(uint64_t timestamp)
@@ -463,26 +497,32 @@ void PostProcessingOptionPage::updatePreviewImg()
     }
     if(cameraFrameId == 0 && backgroundSubtractor != NULL)
         backgroundSubtractor->restart();
-    cv::Size size(1280,720);
     if(!currentFrameCam.empty())
-        size = currentFrameCam.size();
+        videoSize = currentFrameCam.size();
+    if(playAreaMask.size() != videoSize)
+        updatePlayArea();
     cv::Mat background;
     cv::Mat middleImg;
     if(greenBackgroundCheckbox->isChecked()) {
-        background = cv::Mat(size, CV_8UC3);
+        background = cv::Mat(videoSize, CV_8UC3);
         background.setTo(cv::Scalar(0,255,0));
     } else if(blackBackgroundCheckbox->isChecked()) {
-        background = cv::Mat(size, CV_8UC3);
+        background = cv::Mat(videoSize, CV_8UC3);
         background.setTo(cv::Scalar(0,0,0));
     } else if(questImgCheckbox->isChecked()) {
         background = currentFrameQuest(cv::Rect(0,0,currentFrameQuest.cols/2,currentFrameQuest.rows));
-        cv::resize(background, background, size);
+        cv::resize(background, background, videoSize);
     }
     cv::Mat fgmask;
     if(camImgCheckbox->isChecked() || matteImgCheckbox->isChecked()) {
         if(!currentFrameCam.empty()) {
-            if(!background.empty() || matteImgCheckbox->isChecked())
+            if(!background.empty() || matteImgCheckbox->isChecked()) {
+                backgroundSubtractor->setROI(playAreaROI);
                 backgroundSubtractor->apply(currentFrameCam, fgmask);
+                cv::bitwise_and(fgmask, playAreaMask, fgmask);
+            } else {
+                fgmask = playAreaMask.clone();
+            }
 
             if(matteImgCheckbox->isChecked()) {
                 cv::cvtColor(fgmask, middleImg, cv::COLOR_GRAY2BGR);
@@ -497,6 +537,13 @@ void PostProcessingOptionPage::updatePreviewImg()
         if(!fgmask.empty() && !background.empty())
             result = alphaBlendingMat(middleImg, background, fgmask);
         else result = middleImg;
+    }
+    if(selectShapeState == SelectShapeState::selecting)
+    {
+        for(size_t i = 0; i < playAreaShape.size(); i++)
+            cv::circle(result, playAreaShape[i], 5, cv::Scalar(0,0,255), 2);
+        for(size_t i = 0; i+1 < playAreaShape.size(); i++)
+            cv::line(result, playAreaShape[i], playAreaShape[i+1], cv::Scalar(0,0,255), 2);
     }
     win->postProcessPreviewWidget->setImg(result);
 }
@@ -568,6 +615,68 @@ void PostProcessingOptionPage::onClickStopButton()
     }
 }
 
+void PostProcessingOptionPage::onClickSelectPlayAreaButton()
+{
+    if(selectShapeState == SelectShapeState::noSelection) {
+        selectShapeState = SelectShapeState::selecting;
+        win->postProcessPreviewWidget->drawCursor = true;
+        playAreaShape.clear();
+        selectPlayAreaButton->setText("finish the selection");
+    } else {
+        selectShapeState = SelectShapeState::noSelection;
+        win->postProcessPreviewWidget->drawCursor = false;
+        updatePlayArea();
+        selectPlayAreaButton->setText("select play area");
+    }
+    updatePreviewImg();
+}
+
+void PostProcessingOptionPage::updatePlayArea()
+{
+    playAreaMask = cv::Mat(videoSize, CV_8UC1);
+    if(playAreaShape.size() < 3)
+    {
+        playAreaROI = cv::Rect(0,0,videoSize.width,videoSize.height);
+        playAreaMask.setTo(cv::Scalar(255));
+    } else {
+        playAreaMask.setTo(cv::Scalar(0));
+        std::vector<cv::Point> list(playAreaShape.size());
+        for(size_t i = 0; i < playAreaShape.size(); i++)
+            list[i] = cv::Point(playAreaShape[i]);
+        playAreaROI = cv::boundingRect(list);
+
+        const cv::Point* ppt[1] = { &list[0] };
+        int npt[] = { (int)list.size() };
+        cv::fillPoly(playAreaMask, ppt, npt, 1, cv::Scalar( 255 ), cv::LINE_8);
+        qDebug() << "updated mask";
+    }
+    if(backgroundSubtractor != NULL) {
+        backgroundSubtractor->setROI(playAreaROI);
+        backgroundSubtractor->restart();
+    }
+}
+
+void PostProcessingOptionPage::onClickPreviewWidget()
+{
+    if(selectShapeState == SelectShapeState::selecting)
+    {
+        float dist = 10000;
+        if(playAreaShape.size() > 0) {
+            cv::Point2d diff = win->postProcessPreviewWidget->mousePos - playAreaShape[0];
+            dist = sqrt(diff.dot(diff));
+        }
+        if(dist < 20) {
+            selectShapeState = SelectShapeState::noSelection;
+            win->postProcessPreviewWidget->drawCursor = false;
+            updatePlayArea();
+            selectPlayAreaButton->setText("select play area");
+        } else {
+            playAreaShape.push_back(win->postProcessPreviewWidget->mousePos);
+        }
+        updatePreviewImg();
+    }
+}
+
 void PostProcessingOptionPage::encodingThreadFunc()
 {
     int bitrate = 8000000;
@@ -616,7 +725,9 @@ void PostProcessingOptionPage::encodingThreadFunc()
             continue;
 
         cv::Mat fgMask;
+        backgroundSubtractor->setROI(playAreaROI);
         backgroundSubtractor->apply(currentFrameCam, fgMask);
+        cv::bitwise_and(fgMask, playAreaMask, fgMask);
         cv::Mat img = libQuestMR::composeMixedRealityImg(questImg, currentFrameCam, fgMask);
         //cv::Mat img = questImg(cv::Rect(0,0,questImg.cols/2,questImg.rows)).clone();
 
@@ -705,4 +816,9 @@ void PostProcessingOptionPage::onClickStartEncodingButton()
             );
         }
     }
+}
+
+void PostProcessingOptionPage::onClickSavePreviewSettingButton()
+{
+    win->recordMixedRealityPage->setPage();
 }
