@@ -24,6 +24,7 @@ public:
     cv::Mat img;
     cv::Size viewSize;
     cv::Point2d mousePos;
+    float aspectRatio;
     bool leftPressed;
     bool drawCursor;
 signals:

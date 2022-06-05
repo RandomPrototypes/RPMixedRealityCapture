@@ -20,12 +20,14 @@ void RecordMixedRealityPage::setPage()
     //layout->setAlignment(Qt::AlignTop);
 
     QLabel *calibrationLabel = new QLabel;
-    calibrationLabel->setText("record mixed reality: ");
+    calibrationLabel->setText("Record mixed reality: ");
+    calibrationLabel->setMaximumHeight(100);
 
     startRecordingButton = new QPushButton("start recording");
     startRecordingButton->setMaximumWidth(300);
+    startRecordingButton->setMaximumHeight(50);
 
-    QTabWidget *tabWidget = new QTabWidget;
+    /*QTabWidget *tabWidget = new QTabWidget;
 
     win->camPreviewWidget = new OpenCVWidget(cv::Size(1280, 720));
 
@@ -36,11 +38,14 @@ void RecordMixedRealityPage::setPage()
     win->questPreviewWidget->setImg(cv::Mat());
 
     tabWidget->addTab(win->camPreviewWidget, tr("Camera"));
-    tabWidget->addTab(win->questPreviewWidget, tr("Quest"));
+    tabWidget->addTab(win->questPreviewWidget, tr("Quest"));*/
+
+    mixedRealityPreviewWidget = new OpenCVWidget(cv::Size(1280,720));
 
     layout->addWidget(calibrationLabel);
     layout->addWidget(startRecordingButton);
-    layout->addWidget(tabWidget);
+    //layout->addWidget(tabWidget);
+    layout->addWidget(mixedRealityPreviewWidget);
 
     win->mainWidget->setLayout(layout);
 
@@ -94,7 +99,7 @@ void RecordMixedRealityPage::onClickStartRecordingButton()
 
 void RecordMixedRealityPage::onTimer()
 {
-    if(win->videoInput->hasNewImg)
+    /*if(win->videoInput->hasNewImg)
     {
         cv::Mat img = win->videoInput->getImgCopy();
         qDebug() << "cam " << img.cols << " " << img.rows;
@@ -105,6 +110,15 @@ void RecordMixedRealityPage::onTimer()
         cv::Mat img = win->questInput->getImgCopy();
         qDebug() << "quest " << img.cols << " " << img.rows;
         win->questPreviewWidget->setImg(img(cv::Rect(0,0,img.cols/2,img.rows)));
+    }*/
+    if(win->videoInput->hasNewImg) {
+        currentCamImg = win->videoInput->getImgCopy();
+    } else if(win->questInput->hasNewImg) {
+        currentQuestImg = win->questInput->getImgCopy();
+    } else {
+        return ;
     }
+    if(!currentQuestImg.empty() && !currentCamImg.empty())
+        mixedRealityPreviewWidget->setImg(win->composeMixedRealityImg(currentQuestImg, currentCamImg, win->previewCompositorConfig));
 }
 

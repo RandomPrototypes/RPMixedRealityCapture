@@ -41,6 +41,7 @@ private:
     void updateRecordingFile();
     void updatePreviewImg();
     void updatePlayArea();
+    MixedRealityCompositorConfig& getCompositorConfig();
 
     enum class SelectShapeState
     {
@@ -81,7 +82,6 @@ private:
 
     std::shared_ptr<libQuestMR::QuestVideoMngr> questVideoMngr;
     std::shared_ptr<libQuestMR::QuestVideoSourceFile> questVideoSrc;
-    std::shared_ptr<libQuestMR::BackgroundSubtractor> backgroundSubtractor;
     std::shared_ptr<cv::VideoCapture> capCameraVid;
     std::vector<uint64_t> listCameraTimestamp;
     int cameraFrameId, questFrameId;
@@ -91,17 +91,15 @@ private:
     std::thread *encodingThread;
     cv::Mat encodedFrame;
     std::mutex encodingMutex;
-    cv::Size videoSize;
 
     std::vector<cv::Point2d> playAreaShape;
-    cv::Rect playAreaROI;
-    cv::Mat playAreaMask;
 
     volatile PostProcessingState state;
     volatile SelectShapeState selectShapeState;
     uint64_t startPlayTimestamp;
 
     bool isLivePreview;
+    bool useGreenBackground, useBlackBackground, useQuestImg, useCamImg, useMatteImg;
 };
 
 

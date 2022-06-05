@@ -5,6 +5,8 @@ OpenCVWidget::OpenCVWidget(cv::Size viewSize)
 {
     drawCursor = false;
 
+    aspectRatio = (float)viewSize.width / (float)viewSize.height;
+
     setMouseTracking(true);
 }
 
@@ -16,7 +18,10 @@ void OpenCVWidget::setImg(const cv::Mat& img)
 
 void OpenCVWidget::updateViewSize()
 {
-    viewSize = cv::Size(this->contentsRect().width()-2,this->contentsRect().height()-2);
+    int w = this->contentsRect().width()-2;
+    int h = this->contentsRect().height()-2;
+    w = std::min(w, (int)(aspectRatio * h));
+    h = (int)(w / aspectRatio);
     //viewSize = cv::Size(this->width()-this->contentsMargins().left()-this->contentsMargins().right()-2, this->height()-this->contentsMargins().top()-this->contentsMargins().bottom()-2);
     /*qDebug() << "contentsRect" << this->contentsRect().x() << " " << this->contentsRect().y() << " " << this->contentsRect().width() << " " << this->contentsRect().height();
     qDebug() << "contentsMargins" << this->contentsMargins().left() << " " << this->contentsMargins().top() << " " << this->contentsMargins().right() << " " << this->contentsMargins().bottom();

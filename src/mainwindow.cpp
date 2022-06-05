@@ -399,3 +399,72 @@ void MainWindow::stopQuestCommunicator()
     }
     questConnectionStatus = QuestConnectionStatus::NotConnected;
 }
+
+cv::Mat MainWindow::alphaBlendingMat(const cv::Mat& img1, const cv::Mat& img2, const cv::Mat& alphaMask)
+{
+    cv::Mat result = cv::Mat(img1.size(), CV_8UC3);
+    for(int i = 0; i < result.rows; i++)
+    {
+        unsigned char *dst = result.ptr<unsigned char>(i);
+        const unsigned char *src1 = img1.ptr<unsigned char>(i);
+        const unsigned char *src2 = img2.ptr<unsigned char>(i);
+        const unsigned char *alphaPtr = alphaMask.ptr<unsigned char>(i);
+        for(int j = 0; j < result.cols; j++)
+        {
+            unsigned short alpha = *alphaPtr;
+            unsigned short beta = 255 - alpha;
+            for(int k = 3; k > 0; k--) {
+                *dst++ = (alpha * (*src1++) + beta * (*src2++))/255;
+            }
+            alphaPtr++;
+        }
+    }
+    return result;
+}
+
+cv::Mat MainWindow::composeMixedRealityImg(const cv::Mat& questImg, const cv::Mat& camImg, const std::shared_ptr<libQuestMR::BackgroundSubtractor>& backgroundSubtractor, cv::Rect playAreaROI, cv::Mat playAreaMask, cv::Size videoSize, bool useQuestImg, bool useCamImg, bool useMatteImg, bool useGreenBackground, bool useBlackBackground)
+{
+    cv::Mat background;
+    cv::Mat middleImg;
+    if(useGreenBackground) {
+        background = cv::Mat(videoSize, CV_8UC3);
+        background.setTo(cv::Scalar(0,255,0));
+    } else if(useBlackBackground) {
+        background = cv::Mat(videoSize, CV_8UC3);
+        background.setTo(cv::Scalar(0,0,0));
+    } else if(useQuestImg && !questImg.empty()) {
+        background = questImg(cv::Rect(0,0,questImg.cols/2,questImg.rows));
+        cv::resize(background, background, videoSize);
+    }
+    cv::Mat fgmask;
+    if(useCamImg || useMatteImg) {
+        if(!camImg.empty()) {
+            if(!background.empty() || useMatteImg) {
+                backgroundSubtractor->setROI(playAreaROI);
+                backgroundSubtractor->apply(camImg, fgmask);
+                cv::bitwise_and(fgmask, playAreaMask, fgmask);
+            } else {
+                fgmask = playAreaMask.clone();
+            }
+
+            if(useMatteImg) {
+                cv::cvtColor(fgmask, middleImg, cv::COLOR_GRAY2BGR);
+                background = cv::Mat();
+            } else {
+                middleImg = camImg.clone();
+            }
+        }
+    }
+    cv::Mat result = background;
+    if(!middleImg.empty()) {
+        if(!fgmask.empty() && !background.empty())
+            result = alphaBlendingMat(middleImg, background, fgmask);
+        else result = middleImg;
+    }
+    return result;
+}
+
+cv::Mat MainWindow::composeMixedRealityImg(const cv::Mat& questImg, const cv::Mat& camImg, const MixedRealityCompositorConfig& config)
+{
+    return composeMixedRealityImg(questImg, camImg, config.backgroundSubtractor, config.playAreaROI, config.playAreaMask, config.videoSize, config.useQuestImg, config.useCamImg, config.useMatteImg, config.useGreenBackground, config.useBlackBackground);
+}

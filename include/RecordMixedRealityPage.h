@@ -16,6 +16,9 @@ public slots:
 private:
     MainWindow *win;
     QPushButton *startRecordingButton;
+    OpenCVWidget *mixedRealityPreviewWidget;
+
+    cv::Mat currentQuestImg, currentCamImg;
 };
 
 #endif // RECORDMIXEDREALITYPAGE_H

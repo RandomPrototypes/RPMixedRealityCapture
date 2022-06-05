@@ -22,7 +22,8 @@ PostProcessingOptionPage::PostProcessingOptionPage(MainWindow *win)
 void PostProcessingOptionPage::setPage(bool isLivePreview)
 {
     this->isLivePreview = isLivePreview;
-    videoSize = cv::Size(1280,720);
+    MixedRealityCompositorConfig& config = getCompositorConfig();
+    config.videoSize = cv::Size(1280,720);
     win->currentPageName = MainWindow::PageName::postProcessingOption;
     win->clearMainWidget();
 
@@ -44,6 +45,7 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
         layout->addWidget(savePreviewSettingButton, 10, 0);
         connect(savePreviewSettingButton,SIGNAL(clicked()),this,SLOT(onClickSavePreviewSettingButton()));
         win->startCamera();
+        win->startQuestRecorder();
     } else {
         postProcessingLabel->setText("Post processing: ");
         QLabel *questRecordingFileLabel = new QLabel;
@@ -189,13 +191,20 @@ void PostProcessingOptionPage::setQuestRecordingFilename(std::string questFilena
     updateRecordingFile();
 }
 
+MixedRealityCompositorConfig& PostProcessingOptionPage::getCompositorConfig()
+{
+    return isLivePreview ? win->previewCompositorConfig : win->recordingCompositorConfig;
+}
+
 void PostProcessingOptionPage::refreshBackgroundSubtractorOption()
 {
     clearLayout(backgroundSubtractorOptionLayout);
     int bgMethodId = listBackgroundSubtractorCombo->currentIndex();
     if(bgMethodId < 0)
         return ;
-    backgroundSubtractor = libQuestMR::createBackgroundSubtractor(bgMethodId);
+    MixedRealityCompositorConfig& config = getCompositorConfig();
+    config.backgroundSubtractor = libQuestMR::createBackgroundSubtractor(bgMethodId);
+    auto& backgroundSubtractor = config.backgroundSubtractor;
     for(int i = 0; i < backgroundSubtractor->getParameterCount(); i++) {
         if(backgroundSubtractor->getParameterType(i) == libQuestMR::BackgroundSubtractorParamType::ParamTypeInt) {
             QLabel *label = new QLabel;
@@ -249,6 +258,8 @@ void PostProcessingOptionPage::onTimer()
     if(isLivePreview) {
         if(win->videoInput->hasNewImg)
             currentFrameCam = win->videoInput->getImgCopy();
+        if(win->questInput->hasNewImg)
+            currentFrameQuest = win->questInput->getImgCopy();
         updatePreviewImg();
     } else {
         if(state == PostProcessingState::previewPlay || state == PostProcessingState::previewPause) {
@@ -462,28 +473,6 @@ void PostProcessingOptionPage::onClickCamRecordingFileBrowseButton()
     }
 }
 
-cv::Mat alphaBlendingMat(const cv::Mat& img1, const cv::Mat& img2, const cv::Mat& alphaMask)
-{
-    cv::Mat result = cv::Mat(img1.size(), CV_8UC3);
-    for(int i = 0; i < result.rows; i++)
-    {
-        unsigned char *dst = result.ptr<unsigned char>(i);
-        const unsigned char *src1 = img1.ptr<unsigned char>(i);
-        const unsigned char *src2 = img2.ptr<unsigned char>(i);
-        const unsigned char *alphaPtr = alphaMask.ptr<unsigned char>(i);
-        for(int j = 0; j < result.cols; j++)
-        {
-            unsigned short alpha = *alphaPtr;
-            unsigned short beta = 255 - alpha;
-            for(int k = 3; k > 0; k--) {
-                *dst++ = (alpha * (*src1++) + beta * (*src2++))/255;
-            }
-            alphaPtr++;
-        }
-    }
-    return result;
-}
-
 void PostProcessingOptionPage::updatePreviewImg()
 {
     if(state == PostProcessingState::encodingStarted)
@@ -495,49 +484,22 @@ void PostProcessingOptionPage::updatePreviewImg()
         win->postProcessPreviewWidget->setImg(img);
         return ;
     }
-    if(cameraFrameId == 0 && backgroundSubtractor != NULL)
-        backgroundSubtractor->restart();
+    MixedRealityCompositorConfig& config = getCompositorConfig();
+    if(cameraFrameId == 0 && config.backgroundSubtractor != NULL)
+        config.backgroundSubtractor->restart();
     if(!currentFrameCam.empty())
-        videoSize = currentFrameCam.size();
-    if(playAreaMask.size() != videoSize)
+        config.videoSize = currentFrameCam.size();
+    if(config.playAreaMask.size() != config.videoSize)
         updatePlayArea();
-    cv::Mat background;
-    cv::Mat middleImg;
-    if(greenBackgroundCheckbox->isChecked()) {
-        background = cv::Mat(videoSize, CV_8UC3);
-        background.setTo(cv::Scalar(0,255,0));
-    } else if(blackBackgroundCheckbox->isChecked()) {
-        background = cv::Mat(videoSize, CV_8UC3);
-        background.setTo(cv::Scalar(0,0,0));
-    } else if(questImgCheckbox->isChecked()) {
-        background = currentFrameQuest(cv::Rect(0,0,currentFrameQuest.cols/2,currentFrameQuest.rows));
-        cv::resize(background, background, videoSize);
-    }
-    cv::Mat fgmask;
-    if(camImgCheckbox->isChecked() || matteImgCheckbox->isChecked()) {
-        if(!currentFrameCam.empty()) {
-            if(!background.empty() || matteImgCheckbox->isChecked()) {
-                backgroundSubtractor->setROI(playAreaROI);
-                backgroundSubtractor->apply(currentFrameCam, fgmask);
-                cv::bitwise_and(fgmask, playAreaMask, fgmask);
-            } else {
-                fgmask = playAreaMask.clone();
-            }
 
-            if(matteImgCheckbox->isChecked()) {
-                cv::cvtColor(fgmask, middleImg, cv::COLOR_GRAY2BGR);
-                background = cv::Mat();
-            } else {
-                middleImg = currentFrameCam.clone();
-            }
-        }
-    }
-    cv::Mat result = background;
-    if(!middleImg.empty()) {
-        if(!fgmask.empty() && !background.empty())
-            result = alphaBlendingMat(middleImg, background, fgmask);
-        else result = middleImg;
-    }
+    config.useGreenBackground = greenBackgroundCheckbox->isChecked();
+    config.useBlackBackground = blackBackgroundCheckbox->isChecked();
+    config.useQuestImg = questImgCheckbox->isChecked();
+    config.useCamImg = camImgCheckbox->isChecked();
+    config.useMatteImg = matteImgCheckbox->isChecked();
+    cv::Mat result = win->composeMixedRealityImg(currentFrameQuest, currentFrameCam, config);
+
+
     if(selectShapeState == SelectShapeState::selecting)
     {
         for(size_t i = 0; i < playAreaShape.size(); i++)
@@ -633,26 +595,27 @@ void PostProcessingOptionPage::onClickSelectPlayAreaButton()
 
 void PostProcessingOptionPage::updatePlayArea()
 {
-    playAreaMask = cv::Mat(videoSize, CV_8UC1);
+    MixedRealityCompositorConfig& config = getCompositorConfig();
+    config.playAreaMask = cv::Mat(config.videoSize, CV_8UC1);
     if(playAreaShape.size() < 3)
     {
-        playAreaROI = cv::Rect(0,0,videoSize.width,videoSize.height);
-        playAreaMask.setTo(cv::Scalar(255));
+        config.playAreaROI = cv::Rect(0,0,config.videoSize.width,config.videoSize.height);
+        config.playAreaMask.setTo(cv::Scalar(255));
     } else {
-        playAreaMask.setTo(cv::Scalar(0));
+        config.playAreaMask.setTo(cv::Scalar(0));
         std::vector<cv::Point> list(playAreaShape.size());
         for(size_t i = 0; i < playAreaShape.size(); i++)
             list[i] = cv::Point(playAreaShape[i]);
-        playAreaROI = cv::boundingRect(list);
+        config.playAreaROI = cv::boundingRect(list);
 
         const cv::Point* ppt[1] = { &list[0] };
         int npt[] = { (int)list.size() };
-        cv::fillPoly(playAreaMask, ppt, npt, 1, cv::Scalar( 255 ), cv::LINE_8);
+        cv::fillPoly(config.playAreaMask, ppt, npt, 1, cv::Scalar( 255 ), cv::LINE_8);
         qDebug() << "updated mask";
     }
-    if(backgroundSubtractor != NULL) {
-        backgroundSubtractor->setROI(playAreaROI);
-        backgroundSubtractor->restart();
+    if(config.backgroundSubtractor != NULL) {
+        config.backgroundSubtractor->setROI(config.playAreaROI);
+        config.backgroundSubtractor->restart();
     }
 }
 
@@ -679,6 +642,7 @@ void PostProcessingOptionPage::onClickPreviewWidget()
 
 void PostProcessingOptionPage::encodingThreadFunc()
 {
+    MixedRealityCompositorConfig& config = getCompositorConfig();
     int bitrate = 8000000;
 
     videoEncoder = RPCameraInterface::createVideoEncoder();
@@ -724,11 +688,9 @@ void PostProcessingOptionPage::encodingThreadFunc()
         if(!firstFrame && quest_timestamp <= last_timestamp)
             continue;
 
-        cv::Mat fgMask;
-        backgroundSubtractor->setROI(playAreaROI);
-        backgroundSubtractor->apply(currentFrameCam, fgMask);
-        cv::bitwise_and(fgMask, playAreaMask, fgMask);
-        cv::Mat img = libQuestMR::composeMixedRealityImg(questImg, currentFrameCam, fgMask);
+        config.backgroundSubtractor->setROI(config.playAreaROI);
+        cv::Mat img = win->composeMixedRealityImg(questImg, currentFrameCam, config.backgroundSubtractor, config.playAreaROI, config.playAreaMask, config.videoSize, true, true, false, false, false);
+
         //cv::Mat img = questImg(cv::Rect(0,0,questImg.cols/2,questImg.rows)).clone();
 
         if(firstFrame)
@@ -768,6 +730,7 @@ void PostProcessingOptionPage::encodingThreadFunc()
 
 void PostProcessingOptionPage::onClickStartEncodingButton()
 {
+    MixedRealityCompositorConfig& config = getCompositorConfig();
     if(state == PostProcessingState::encodingStarted || state == PostProcessingState::encodingPaused) {
         onClickStopButton();
         return ;
@@ -783,7 +746,7 @@ void PostProcessingOptionPage::onClickStartEncodingButton()
         return ;
     }
 
-    if(backgroundSubtractor == NULL) {
+    if(config.backgroundSubtractor == NULL) {
         QMessageBox msgBox;
         msgBox.setText("You must select a background subtraction method");
         msgBox.exec();
