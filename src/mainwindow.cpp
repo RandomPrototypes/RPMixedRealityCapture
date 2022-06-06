@@ -102,10 +102,12 @@ void MainWindow::setFrontPage()
     imageLabel->setPixmap(pixmap);
     textLabel->setText("Welcome to RandomPrototypes' mixed reality capture (RPMRC)");
     QFont font;
-    font.setPointSize(15);
+    font.setPointSize(20);
     textLabel->setFont(font);
 
     QPushButton *startButton = new QPushButton("start");
+
+    startButton->setStyleSheet("font-size: 20px;");
 
 
     layout->setAlignment(Qt::AlignCenter);
@@ -422,7 +424,7 @@ cv::Mat MainWindow::alphaBlendingMat(const cv::Mat& img1, const cv::Mat& img2, c
     return result;
 }
 
-cv::Mat MainWindow::composeMixedRealityImg(const cv::Mat& questImg, const cv::Mat& camImg, const std::shared_ptr<libQuestMR::BackgroundSubtractor>& backgroundSubtractor, cv::Rect playAreaROI, cv::Mat playAreaMask, cv::Size videoSize, bool useQuestImg, bool useCamImg, bool useMatteImg, bool useGreenBackground, bool useBlackBackground)
+cv::Mat MainWindow::composeMixedRealityImg(const cv::Mat& questImg, const cv::Mat& camImg, const std::shared_ptr<libQuestMR::BackgroundSubtractor>& backgroundSubtractor, int subsampling, cv::Rect playAreaROI, cv::Mat playAreaMask, cv::Size videoSize, bool useQuestImg, bool useCamImg, bool useMatteImg, bool useGreenBackground, bool useBlackBackground)
 {
     cv::Mat background;
     cv::Mat middleImg;
@@ -440,8 +442,16 @@ cv::Mat MainWindow::composeMixedRealityImg(const cv::Mat& questImg, const cv::Ma
     if(useCamImg || useMatteImg) {
         if(!camImg.empty()) {
             if(!background.empty() || useMatteImg) {
-                backgroundSubtractor->setROI(playAreaROI);
-                backgroundSubtractor->apply(camImg, fgmask);
+                backgroundSubtractor->setROI(adjustROIWithSubsampling(playAreaROI, subsampling));
+                cv::Mat subCamImg;
+                if(subsampling != 1) {
+                    cv::resize(camImg, subCamImg, cv::Size(camImg.cols/subsampling, camImg.rows/subsampling));
+                } else {
+                    subCamImg = camImg;
+                }
+                backgroundSubtractor->apply(subCamImg, fgmask);
+                if(subsampling != 1)
+                    cv::resize(fgmask, fgmask, cv::Size(camImg.cols, camImg.rows));
                 cv::bitwise_and(fgmask, playAreaMask, fgmask);
             } else {
                 fgmask = playAreaMask.clone();
@@ -466,5 +476,10 @@ cv::Mat MainWindow::composeMixedRealityImg(const cv::Mat& questImg, const cv::Ma
 
 cv::Mat MainWindow::composeMixedRealityImg(const cv::Mat& questImg, const cv::Mat& camImg, const MixedRealityCompositorConfig& config)
 {
-    return composeMixedRealityImg(questImg, camImg, config.backgroundSubtractor, config.playAreaROI, config.playAreaMask, config.videoSize, config.useQuestImg, config.useCamImg, config.useMatteImg, config.useGreenBackground, config.useBlackBackground);
+    return composeMixedRealityImg(questImg, camImg, config.backgroundSubtractor, config.subsampling, config.playAreaROI, config.playAreaMask, config.videoSize, config.useQuestImg, config.useCamImg, config.useMatteImg, config.useGreenBackground, config.useBlackBackground);
+}
+
+cv::Rect MainWindow::adjustROIWithSubsampling(cv::Rect ROI, int subsampling)
+{
+    return cv::Rect(ROI.x/subsampling, ROI.y/subsampling, ROI.width/subsampling, ROI.height/subsampling);
 }

@@ -17,16 +17,28 @@ void FirstMenuPage::setPage()
 
     QVBoxLayout *layout = new QVBoxLayout();
 
-    QPushButton *calibrationButton = new QPushButton("Calibration");
+    QPushButton *calibrationButton = new QPushButton(" Calibration ");
+    calibrationButton->setMaximumWidth(200);
+    calibrationButton->setStyleSheet("font-size: 20px;");
+    layout->setAlignment(calibrationButton, Qt::AlignHCenter);
     layout->addWidget(calibrationButton);
 
-    QPushButton *recordingButton = new QPushButton("Recording");
+    QPushButton *recordingButton = new QPushButton(" Recording ");
+    recordingButton->setMaximumWidth(200);
+    recordingButton->setStyleSheet("font-size: 20px;");
+    layout->setAlignment(recordingButton, Qt::AlignHCenter);
     layout->addWidget(recordingButton);
 
-    QPushButton *postProcessingButton = new QPushButton("Post processing video");
+    QPushButton *postProcessingButton = new QPushButton(" Post processing video ");
+    postProcessingButton->setMaximumWidth(200);
+    postProcessingButton->setStyleSheet("font-size: 20px;");
+    layout->setAlignment(postProcessingButton, Qt::AlignHCenter);
     layout->addWidget(postProcessingButton);
 
     win->mainWidget->setLayout(layout);
+
+    layout->setAlignment(Qt::AlignHCenter);
+    layout->setSpacing(100);
 
     connect(calibrationButton,SIGNAL(clicked()),this,SLOT(onClickCalibrationButton()));
     connect(recordingButton,SIGNAL(clicked()),this,SLOT(onClickRecordingButton()));

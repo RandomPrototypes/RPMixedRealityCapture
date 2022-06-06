@@ -40,7 +40,11 @@ void RecordMixedRealityPage::setPage()
     tabWidget->addTab(win->camPreviewWidget, tr("Camera"));
     tabWidget->addTab(win->questPreviewWidget, tr("Quest"));*/
 
-    mixedRealityPreviewWidget = new OpenCVWidget(cv::Size(1280,720));
+    cv::Size size(1280,720);
+    qDebug() << "width " << win->width() << " height " << win->height();
+    if(win->height() < 900)
+        size = cv::Size(960,540);
+    mixedRealityPreviewWidget = new OpenCVWidget(size);
 
     layout->addWidget(calibrationLabel);
     layout->addWidget(startRecordingButton);
@@ -118,7 +122,7 @@ void RecordMixedRealityPage::onTimer()
     } else {
         return ;
     }
-    if(!currentQuestImg.empty() && !currentCamImg.empty())
+    if(!currentQuestImg.empty() || !currentCamImg.empty())
         mixedRealityPreviewWidget->setImg(win->composeMixedRealityImg(currentQuestImg, currentCamImg, win->previewCompositorConfig));
 }
 

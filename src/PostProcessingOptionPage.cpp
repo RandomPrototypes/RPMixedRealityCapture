@@ -24,6 +24,8 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
     this->isLivePreview = isLivePreview;
     MixedRealityCompositorConfig& config = getCompositorConfig();
     config.videoSize = cv::Size(1280,720);
+    config.subsampling = 1.0;
+    config.camDelayMs = 0;
     win->currentPageName = MainWindow::PageName::postProcessingOption;
     win->clearMainWidget();
 
@@ -159,9 +161,14 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
 
     layout->addLayout(preview_checkbox_layout, 5, 0, 1, 2);
 
-    layout->addWidget(win->postProcessPreviewWidget, 6, 0, 3, 3);
+    QHBoxLayout *hlayout = new QHBoxLayout();
+    hlayout->addWidget(win->postProcessPreviewWidget);
+    hlayout->addLayout(backgroundSubtractorOptionLayout);
 
-    layout->addLayout(backgroundSubtractorOptionLayout, 6, 3, 3, 3);
+    layout->addLayout(hlayout, 6, 0, 3, 6);
+    //layout->addWidget(win->postProcessPreviewWidget, 6, 0, 3, 3);
+
+    //layout->addLayout(backgroundSubtractorOptionLayout, 6, 3, 3, 1);
 
     win->mainWidget->setLayout(layout);
 
@@ -203,6 +210,36 @@ void PostProcessingOptionPage::refreshBackgroundSubtractorOption()
     if(bgMethodId < 0)
         return ;
     MixedRealityCompositorConfig& config = getCompositorConfig();
+
+    QLabel *subsamplingLabel = new QLabel;
+    subsamplingLabel->setText("subsampling:");
+    QSpinBox *subsamplingSpin = new QSpinBox();
+    subsamplingSpin->setValue(config.subsampling);
+    subsamplingSpin->setMinimum(1);
+    subsamplingSpin->setMaximum(16);
+    subsamplingSpin->setSingleStep(1);
+    backgroundSubtractorOptionLayout->addWidget(subsamplingLabel, 0, 0);
+    backgroundSubtractorOptionLayout->addWidget(subsamplingSpin, 0, 1);
+    connect(subsamplingSpin,QOverload<int>::of(&QSpinBox::valueChanged),[=](double val){
+        getCompositorConfig().subsampling = val;
+        getCompositorConfig().backgroundSubtractor->restart();
+    });
+
+    QLabel *delayLabel = new QLabel;
+    delayLabel->setText("camera delay (ms):");
+    QSpinBox *delaySpin = new QSpinBox();
+    delaySpin->setValue(config.camDelayMs);
+    delaySpin->setMinimum(-100000);
+    delaySpin->setMaximum(100000);
+    delaySpin->setSingleStep(50);
+    backgroundSubtractorOptionLayout->addWidget(delayLabel, 1, 0);
+    backgroundSubtractorOptionLayout->addWidget(delaySpin, 1, 1);
+    connect(delaySpin,QOverload<int>::of(&QSpinBox::valueChanged),[=](int val){
+        getCompositorConfig().camDelayMs = val;
+    });
+
+    int startLine = 2;
+
     config.backgroundSubtractor = libQuestMR::createBackgroundSubtractor(bgMethodId);
     auto& backgroundSubtractor = config.backgroundSubtractor;
     for(int i = 0; i < backgroundSubtractor->getParameterCount(); i++) {
@@ -211,8 +248,8 @@ void PostProcessingOptionPage::refreshBackgroundSubtractorOption()
             label->setText(backgroundSubtractor->getParameterName(i).str().c_str());
             QSpinBox *spin = new QSpinBox();
             spin->setValue(backgroundSubtractor->getParameterValAsInt(i));
-            backgroundSubtractorOptionLayout->addWidget(label, i, 0);
-            backgroundSubtractorOptionLayout->addWidget(spin, i, 1);
+            backgroundSubtractorOptionLayout->addWidget(label, startLine+i, 0);
+            backgroundSubtractorOptionLayout->addWidget(spin, startLine+i, 1);
             connect(spin,QOverload<int>::of(&QSpinBox::valueChanged),[=](int val){
                 backgroundSubtractor->setParameterVal(i, val);
             });
@@ -221,8 +258,8 @@ void PostProcessingOptionPage::refreshBackgroundSubtractorOption()
             label->setText(backgroundSubtractor->getParameterName(i).str().c_str());
             QCheckBox *checkbox = new QCheckBox();
             checkbox->setChecked(backgroundSubtractor->getParameterValAsBool(i));
-            backgroundSubtractorOptionLayout->addWidget(label, i, 0);
-            backgroundSubtractorOptionLayout->addWidget(checkbox, i, 1);
+            backgroundSubtractorOptionLayout->addWidget(label, startLine+i, 0);
+            backgroundSubtractorOptionLayout->addWidget(checkbox, startLine+i, 1);
             connect(checkbox,&QCheckBox::clicked,[=](){
                 backgroundSubtractor->setParameterVal(i, checkbox->isEnabled());
             });
@@ -236,8 +273,8 @@ void PostProcessingOptionPage::refreshBackgroundSubtractorOption()
             QPushButton *button = new QPushButton;
             button->setText("select color");
             hlayout->addWidget(button);
-            backgroundSubtractorOptionLayout->addWidget(label, i, 0);
-            backgroundSubtractorOptionLayout->addLayout(hlayout, i, 1);
+            backgroundSubtractorOptionLayout->addWidget(label, startLine+i, 0);
+            backgroundSubtractorOptionLayout->addLayout(hlayout, startLine+i, 1);
             connect(button,&QPushButton::clicked,[=](){
                 unsigned char r,g,b;
                 backgroundSubtractor->getParameterValAsRGB(i, &r, &g, &b);
@@ -312,7 +349,7 @@ void PostProcessingOptionPage::readCameraFrame(uint64_t timestamp)
         qDebug() << "videoTickImpl";
         uint64_t quest_timestamp;
         currentFrameQuest = questVideoMngr->getMostRecentImg(&quest_timestamp);
-        while(questVideoSrc->isValid() && quest_timestamp < listCameraTimestamp[cameraFrameId]) {
+        while(questVideoSrc->isValid() && quest_timestamp < listCameraTimestamp[cameraFrameId] + getCompositorConfig().camDelayMs) {
             questVideoMngr->VideoTickImpl();
             currentFrameQuest = questVideoMngr->getMostRecentImg(&quest_timestamp);
         }
@@ -613,10 +650,8 @@ void PostProcessingOptionPage::updatePlayArea()
         cv::fillPoly(config.playAreaMask, ppt, npt, 1, cv::Scalar( 255 ), cv::LINE_8);
         qDebug() << "updated mask";
     }
-    if(config.backgroundSubtractor != NULL) {
-        config.backgroundSubtractor->setROI(config.playAreaROI);
+    if(config.backgroundSubtractor != NULL)
         config.backgroundSubtractor->restart();
-    }
 }
 
 void PostProcessingOptionPage::onClickPreviewWidget()
@@ -688,8 +723,7 @@ void PostProcessingOptionPage::encodingThreadFunc()
         if(!firstFrame && quest_timestamp <= last_timestamp)
             continue;
 
-        config.backgroundSubtractor->setROI(config.playAreaROI);
-        cv::Mat img = win->composeMixedRealityImg(questImg, currentFrameCam, config.backgroundSubtractor, config.playAreaROI, config.playAreaMask, config.videoSize, true, true, false, false, false);
+        cv::Mat img = win->composeMixedRealityImg(questImg, currentFrameCam, config.backgroundSubtractor, config.subsampling, config.playAreaROI, config.playAreaMask, config.videoSize, true, true, false, false, false);
 
         //cv::Mat img = questImg(cv::Rect(0,0,questImg.cols/2,questImg.rows)).clone();
 

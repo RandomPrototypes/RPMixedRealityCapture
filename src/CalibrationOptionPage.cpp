@@ -21,18 +21,33 @@ void CalibrationOptionPage::setPage()
 
 
     QPushButton *checkCurrentCalibButton = new QPushButton("Check current calibration");
+    checkCurrentCalibButton->setMaximumWidth(300);
+    checkCurrentCalibButton->setStyleSheet("font-size: 20px;");
+    layout->setAlignment(checkCurrentCalibButton, Qt::AlignHCenter);
     layout->addWidget(checkCurrentCalibButton);
 
     QPushButton *importExportCalibrationFileButton = new QPushButton("Import/export calibration file");
+    importExportCalibrationFileButton->setMaximumWidth(300);
+    importExportCalibrationFileButton->setStyleSheet("font-size: 20px;");
+    layout->setAlignment(importExportCalibrationFileButton, Qt::AlignHCenter);
     layout->addWidget(importExportCalibrationFileButton);
 
     QPushButton *calibrateCameraQuestButton = new QPushButton("Calibrate camera/quest");
+    calibrateCameraQuestButton->setMaximumWidth(300);
+    calibrateCameraQuestButton->setStyleSheet("font-size: 20px;");
+    layout->setAlignment(calibrateCameraQuestButton, Qt::AlignHCenter);
     layout->addWidget(calibrateCameraQuestButton);
 
     QPushButton *backToMenuButton = new QPushButton("Back to menu");
+    backToMenuButton->setMaximumWidth(300);
+    backToMenuButton->setStyleSheet("font-size: 20px;");
+    layout->setAlignment(backToMenuButton, Qt::AlignHCenter);
     layout->addWidget(backToMenuButton);
 
     win->mainWidget->setLayout(layout);
+
+    layout->setAlignment(Qt::AlignHCenter);
+    layout->setSpacing(100);
 
     connect(checkCurrentCalibButton,SIGNAL(clicked()),this,SLOT(onClickCheckCurrentCalibrationButton()));
     connect(importExportCalibrationFileButton,SIGNAL(clicked()),this,SLOT(onClickImportExportCalibrationFileButton()));

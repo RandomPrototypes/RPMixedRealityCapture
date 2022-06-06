@@ -56,6 +56,8 @@ public:
     bool useMatteImg;
     bool useGreenBackground;
     bool useBlackBackground;
+    int camDelayMs;
+    int subsampling;
 };
 
 class MainWindow : public QMainWindow
@@ -89,9 +91,9 @@ public:
     void stopQuestRecorder();
     void stopQuestCommunicator();
     cv::Mat alphaBlendingMat(const cv::Mat& img1, const cv::Mat& img2, const cv::Mat& alphaMask);
-    cv::Mat composeMixedRealityImg(const cv::Mat& questImg, const cv::Mat& camImg, const std::shared_ptr<libQuestMR::BackgroundSubtractor>& backgroundSubtractor, cv::Rect playAreaROI, cv::Mat playAreaMask, cv::Size videoSize, bool useQuestImg = true, bool useCamImg = true, bool useMatteImg = false, bool useGreenBackground = false, bool useBlackBackground = false);
+    cv::Mat composeMixedRealityImg(const cv::Mat& questImg, const cv::Mat& camImg, const std::shared_ptr<libQuestMR::BackgroundSubtractor>& backgroundSubtractor, int subsampling, cv::Rect playAreaROI, cv::Mat playAreaMask, cv::Size videoSize, bool useQuestImg = true, bool useCamImg = true, bool useMatteImg = false, bool useGreenBackground = false, bool useBlackBackground = false);
     cv::Mat composeMixedRealityImg(const cv::Mat& questImg, const cv::Mat& camImg, const MixedRealityCompositorConfig& config);
-
+    cv::Rect adjustROIWithSubsampling(cv::Rect ROI, int subsampling);
 
 private slots:
     void onClickStartButton();

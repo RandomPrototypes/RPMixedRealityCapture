@@ -20,20 +20,24 @@ void ConnectQuestPage::setPage()
 
     textLabel->setText("Enter the ip address of the quest...");
     QFont font;
-    font.setPointSize(15);
+    font.setPointSize(20);
     textLabel->setFont(font);
 
     QHBoxLayout *ipAddressLayout = new QHBoxLayout();
     ipAddressLayout->setContentsMargins(10,50,10,50);
     QLabel *ipAddressLabel = new QLabel;
     ipAddressLabel->setText("ip address: ");
+    ipAddressLabel->setStyleSheet("font-size: 20px;");
     ipAddressField = new QLineEdit();
     ipAddressField->setFixedWidth(200);
+    ipAddressField->setStyleSheet("font-size: 20px;");
     ipAddressField->setText(win->questIpAddress.c_str());//"192.168.10.105");
     ipAddressLayout->addWidget(ipAddressLabel);
     ipAddressLayout->addWidget(ipAddressField);
 
+
     connectButton = new QPushButton(win->isCalibrationSection ? "connect" : "next");
+    connectButton->setStyleSheet("font-size: 20px;");
 
     layout->addWidget(textLabel,Qt::AlignCenter);
     layout->addLayout(ipAddressLayout);

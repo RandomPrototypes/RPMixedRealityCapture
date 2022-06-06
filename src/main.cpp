@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     MainWindow w;
     w.resize(1000,800);
-    w.show();
+    w.showMaximized();
     return a.exec();
 
     /*CameraInterfaceV4L2 cam;

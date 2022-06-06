@@ -22,18 +22,32 @@ void CalibrateCameraQuestMenuPage::setPage()
     layout->setContentsMargins(200,50,200,50);
 
     QPushButton *calibrateCameraWithChessboardButton = new QPushButton("Calibrate camera instrinsic with chessboard");
+    calibrateCameraWithChessboardButton->setMaximumWidth(500);
+    calibrateCameraWithChessboardButton->setStyleSheet("font-size: 20px;");
+    layout->setAlignment(calibrateCameraWithChessboardButton, Qt::AlignHCenter);
     layout->addWidget(calibrateCameraWithChessboardButton);
 
     QPushButton *calibrateCameraPoseButton = new QPushButton("Calibrate camera pose");
+    calibrateCameraPoseButton->setMaximumWidth(500);
+    calibrateCameraPoseButton->setStyleSheet("font-size: 20px;");
+    layout->setAlignment(calibrateCameraPoseButton, Qt::AlignHCenter);
     layout->addWidget(calibrateCameraPoseButton);
 
     QPushButton *calibrateFullButton = new QPushButton("Calibrate camera intrinsic and pose (simple)");
+    calibrateFullButton->setMaximumWidth(500);
+    calibrateFullButton->setStyleSheet("font-size: 20px;");
+    layout->setAlignment(calibrateFullButton, Qt::AlignHCenter);
     layout->addWidget(calibrateFullButton);
 
     QPushButton *backToMenuButton = new QPushButton("Back to menu");
+    backToMenuButton->setMaximumWidth(500);
+    backToMenuButton->setStyleSheet("font-size: 20px;");
+    layout->setAlignment(backToMenuButton, Qt::AlignHCenter);
     layout->addWidget(backToMenuButton);
 
     win->mainWidget->setLayout(layout);
+    layout->setAlignment(Qt::AlignHCenter);
+    layout->setSpacing(100);
 
     connect(calibrateCameraWithChessboardButton,SIGNAL(clicked()),this,SLOT(onClickCalibrateCameraWithChessboardButton()));
     connect(calibrateCameraPoseButton,SIGNAL(clicked()),this,SLOT(onClickCalibrateCameraPoseButton()));

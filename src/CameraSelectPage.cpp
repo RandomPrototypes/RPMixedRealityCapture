@@ -24,7 +24,7 @@ void CameraSelectPage::setPage()
 
     textLabel->setText("Select the type of camera...");
     QFont font;
-    font.setPointSize(15);
+    font.setPointSize(20);
     textLabel->setFont(font);
 
     QHBoxLayout *hlayout = new QHBoxLayout();
@@ -38,6 +38,7 @@ void CameraSelectPage::setPage()
         win->listCameraEnumerator.push_back(camEnumerator);
         std::string type = std::string("&")+camEnumerator->getCameraType();
         QRadioButton *cameraButton = new QRadioButton(tr(type.c_str()));
+        cameraButton->setStyleSheet("font-size: 20px;");
         hlayout->addWidget(cameraButton);
         connect(cameraButton,&QRadioButton::clicked,[=](){onClickCameraButton(index);});
     }
@@ -151,6 +152,8 @@ void CameraSelectPage::setCameraParamBox(std::shared_ptr<RPCameraInterface::Came
 
 
     QPushButton *selectButton = new QPushButton("select");
+    selectButton->setStyleSheet("font-size: 20px;");
+
 
     cameraSelectLayout->addWidget(cameraLabel);
     cameraSelectLayout->addWidget(listCameraCombo);
