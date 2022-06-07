@@ -19,7 +19,8 @@ public slots:
     void onClickQuestRecordingFileBrowseButton();
     void onClickCamRecordingFileBrowseButton();
     void onClickStartEncodingButton();
-    void onSelectBackgroundSubtractorCombo(int);
+    void onSelectCamBackgroundSubtractorCombo(int);
+    void onSelectQuestBackgroundSubtractorCombo(int);
     void onClickCamImgCheckbox();
     void onClickQuestImgCheckbox();
     void onClickMatteImgCheckbox();
@@ -35,7 +36,7 @@ private:
     void readCameraFrame(uint64_t timestamp);
     void encodingThreadFunc();
     void updateDurationLabel();
-    void refreshBackgroundSubtractorOption();
+    void refreshBackgroundSubtractorOption(bool questBackground);
     bool loadCameraRecordingFile();
     bool loadQuestRecordingFile();
     void updateRecordingFile();
@@ -63,9 +64,11 @@ private:
     MainWindow *win;
     QLineEdit *questRecordingFileEdit;
     QLineEdit *camRecordingFileEdit;
-    QComboBox *listBackgroundSubtractorCombo;
+    QComboBox *listCamBackgroundSubtractorCombo;
+    QComboBox *listQuestBackgroundSubtractorCombo;
     QGridLayout *layout;
-    QGridLayout *backgroundSubtractorOptionLayout;
+    QGridLayout *camBackgroundSubtractorOptionLayout;
+    QGridLayout *questBackgroundSubtractorOptionLayout;
 
     QToolButton *playButton;
     QLabel *durationLabel;
