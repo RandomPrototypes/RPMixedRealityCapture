@@ -424,7 +424,7 @@ cv::Mat MainWindow::alphaBlendingMat(const cv::Mat& img1, const cv::Mat& img2, c
     return result;
 }
 
-cv::Mat MainWindow::composeMixedRealityImg(const cv::Mat& questImg, const cv::Mat& camImg, const std::shared_ptr<libQuestMR::BackgroundSubtractor>& camBackgroundSubtractor, int camSubsampling, const std::shared_ptr<libQuestMR::BackgroundSubtractor>& questBackgroundSubtractor, int questSubsampling, cv::Rect playAreaROI, cv::Mat playAreaMask, cv::Size videoSize, bool useQuestImg, bool useCamImg, bool useMatteImg, bool useGreenBackground, bool useBlackBackground)
+cv::Mat MainWindow::composeMixedRealityImg(const cv::Mat& questImg, const cv::Mat& camImg, const std::shared_ptr<libQuestMR::BackgroundSubtractor>& camBackgroundSubtractor, int camSubsampling, int camErosion, const std::shared_ptr<libQuestMR::BackgroundSubtractor>& questBackgroundSubtractor, int questSubsampling, int questErosion, cv::Rect playAreaROI, cv::Mat playAreaMask, cv::Size videoSize, bool useQuestImg, bool useCamImg, bool useMatteImg, bool useGreenBackground, bool useBlackBackground)
 {
     cv::Mat background;
     cv::Mat middleImg;
@@ -441,6 +441,8 @@ cv::Mat MainWindow::composeMixedRealityImg(const cv::Mat& questImg, const cv::Ma
     cv::Mat fgmask;
     if(useCamImg || useMatteImg) {
         if(!camImg.empty()) {
+            cv::Mat element = cv::getStructuringElement( cv::MORPH_CROSS, cv::Size(3,3), cv::Point(1,1));
+
             if(camBackgroundSubtractor != NULL && (!background.empty() || useMatteImg)) {
                 camBackgroundSubtractor->setROI(adjustROIWithSubsampling(playAreaROI, camSubsampling));
                 cv::Mat subCamImg;
@@ -452,6 +454,10 @@ cv::Mat MainWindow::composeMixedRealityImg(const cv::Mat& questImg, const cv::Ma
                 camBackgroundSubtractor->apply(subCamImg, fgmask);
                 if(camSubsampling != 1)
                     cv::resize(fgmask, fgmask, cv::Size(camImg.cols, camImg.rows));
+                for(int i = 0; i < camErosion; i++)
+                    cv::erode(fgmask, fgmask, element);
+                for(int i = 0; i < -camErosion; i++)
+                    cv::dilate(fgmask, fgmask, element);
                 cv::bitwise_and(fgmask, playAreaMask, fgmask);
             } else {
                 fgmask = playAreaMask.clone();
@@ -461,14 +467,19 @@ cv::Mat MainWindow::composeMixedRealityImg(const cv::Mat& questImg, const cv::Ma
                 cv::Rect roi(0,0,videoSize.width,videoSize.height);
                 questBackgroundSubtractor->setROI(adjustROIWithSubsampling(roi, questSubsampling));
                 cv::Mat subBackground;
-                if(camSubsampling != 1) {
-                    cv::resize(background, subBackground, cv::Size(background.cols/camSubsampling, background.rows/camSubsampling));
+                if(questSubsampling != 1) {
+                    cv::resize(background, subBackground, cv::Size(background.cols/questSubsampling, background.rows/questSubsampling));
                 } else {
                     subBackground = background;
                 }
                 cv::Mat bgmask;
                 questBackgroundSubtractor->apply(subBackground, bgmask);
-                qDebug() << "bgmask" << bgmask.cols << " " << bgmask.rows;
+                if(questSubsampling != 1)
+                    cv::resize(bgmask, bgmask, cv::Size(background.cols, background.rows));
+                for(int i = 0; i < questErosion; i++)
+                    cv::erode(bgmask, bgmask, element);
+                for(int i = 0; i < -questErosion; i++)
+                    cv::dilate(bgmask, bgmask, element);
                 cv::bitwise_not(bgmask, bgmask);
                 cv::bitwise_or(fgmask, bgmask, fgmask);
                 //cv::cvtColor(fgmask, middleImg, cv::COLOR_GRAY2BGR);
@@ -494,7 +505,7 @@ cv::Mat MainWindow::composeMixedRealityImg(const cv::Mat& questImg, const cv::Ma
 
 cv::Mat MainWindow::composeMixedRealityImg(const cv::Mat& questImg, const cv::Mat& camImg, const MixedRealityCompositorConfig& config)
 {
-    return composeMixedRealityImg(questImg, camImg, config.camBackgroundSubtractor, config.camSubsampling, config.questBackgroundSubtractor, config.questSubsampling, config.playAreaROI, config.playAreaMask, config.videoSize, config.useQuestImg, config.useCamImg, config.useMatteImg, config.useGreenBackground, config.useBlackBackground);
+    return composeMixedRealityImg(questImg, camImg, config.camBackgroundSubtractor, config.camSubsampling, config.camErosion, config.questBackgroundSubtractor, config.questSubsampling, config.questErosion, config.playAreaROI, config.playAreaMask, config.videoSize, config.useQuestImg, config.useCamImg, config.useMatteImg, config.useGreenBackground, config.useBlackBackground);
 }
 
 cv::Rect MainWindow::adjustROIWithSubsampling(cv::Rect ROI, int subsampling)

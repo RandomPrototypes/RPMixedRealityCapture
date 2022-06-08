@@ -26,6 +26,8 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
     config.videoSize = cv::Size(1280,720);
     config.camSubsampling = 1;
     config.questSubsampling = 1;
+    config.camErosion = 0;
+    config.questErosion = 0;
     config.camDelayMs = 0;
     win->currentPageName = MainWindow::PageName::postProcessingOption;
     win->clearMainWidget();
@@ -155,8 +157,22 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
             config.camBackgroundSubtractor->restart();
     });
 
+    QLabel *camErosionLabel = new QLabel;
+    camErosionLabel->setText("erosion:");
+    QSpinBox *camErosionSpin = new QSpinBox();
+    camErosionSpin->setValue(config.camErosion);
+    camErosionSpin->setMinimum(-30);
+    camErosionSpin->setMaximum(30);
+    camErosionSpin->setSingleStep(1);
+    camSettingLayout->addWidget(camErosionLabel, 4, 0);
+    camSettingLayout->addWidget(camErosionSpin, 4, 1);
+    connect(camErosionSpin,QOverload<int>::of(&QSpinBox::valueChanged),[=](int val){
+        MixedRealityCompositorConfig& config = getCompositorConfig();
+        config.camErosion = val;
+    });
+
     camBackgroundSubtractorOptionLayout = new QGridLayout();
-    camSettingLayout->addLayout(camBackgroundSubtractorOptionLayout, 4, 0, 3, 2);
+    camSettingLayout->addLayout(camBackgroundSubtractorOptionLayout, 5, 0, 3, 2);
 
 
     QWidget *questBackgroundSubtractorOptionWidget = new QWidget();
@@ -188,8 +204,22 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
             config.questBackgroundSubtractor->restart();
     });
 
+    QLabel *questErosionLabel = new QLabel;
+    questErosionLabel->setText("erosion:");
+    QSpinBox *questErosionSpin = new QSpinBox();
+    questErosionSpin->setValue(config.questErosion);
+    questErosionSpin->setMinimum(-30);
+    questErosionSpin->setMaximum(30);
+    questErosionSpin->setSingleStep(1);
+    questSettingLayout->addWidget(questErosionLabel, 3, 0);
+    questSettingLayout->addWidget(questErosionSpin, 3, 1);
+    connect(questErosionSpin,QOverload<int>::of(&QSpinBox::valueChanged),[=](int val){
+        MixedRealityCompositorConfig& config = getCompositorConfig();
+        config.questErosion = val;
+    });
+
     questBackgroundSubtractorOptionLayout = new QGridLayout();
-    questSettingLayout->addLayout(questBackgroundSubtractorOptionLayout, 3, 0, 3, 2);
+    questSettingLayout->addLayout(questBackgroundSubtractorOptionLayout, 4, 0, 3, 2);
 
     tabWidget->addTab(camBackgroundSubtractorOptionWidget, tr("Camera settings"));
     tabWidget->addTab(questBackgroundSubtractorOptionWidget, tr("Quest settings"));
