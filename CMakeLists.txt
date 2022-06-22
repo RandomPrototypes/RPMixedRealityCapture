@@ -29,7 +29,7 @@ SET(tinyxml2 ${tinyxml2_SOURCE_DIR})
 
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets Multimedia REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Multimedia REQUIRED)
-find_package(OpenCV REQUIRED)
+find_package(OpenCV REQUIRED imgproc videoio calib3d)
 find_package(RPCameraInterface REQUIRED)
 find_package(libQuestMR REQUIRED)
 

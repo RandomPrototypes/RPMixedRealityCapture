@@ -17,6 +17,7 @@ enum AndroidCameraCmd
 
 int main(int argc, char *argv[])
 {
+    libQuestMR::setBackgroundSubtractorResourceFolder("resources/backgroundSub_data");
     /*BufferedSocket bufferedSock;
 
     if (!bufferedSock.connect("192.168.10.101", 25600))

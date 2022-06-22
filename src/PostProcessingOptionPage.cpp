@@ -442,7 +442,7 @@ void PostProcessingOptionPage::readCameraFrame(uint64_t timestamp)
         cameraFrameId++;
     }
     if(questVideoMngr != NULL && questVideoSrc->isValid()) {
-        qDebug() << "videoTickImpl";
+        //qDebug() << "videoTickImpl";
         uint64_t quest_timestamp;
         currentFrameQuest = questVideoMngr->getMostRecentImg(&quest_timestamp);
         while(questVideoSrc->isValid() && quest_timestamp < listCameraTimestamp[cameraFrameId] + getCompositorConfig().camDelayMs) {
@@ -550,7 +550,7 @@ void PostProcessingOptionPage::updateRecordingFile()
         return ;
 
     while(questVideoSrc->isValid() && currentFrameQuest.cols < 100) {
-        qDebug() << "videoTickImpl";
+        //qDebug() << "videoTickImpl";
         questVideoMngr->VideoTickImpl();
         uint64_t quest_timestamp;
         currentFrameQuest = questVideoMngr->getMostRecentImg(&quest_timestamp);
@@ -805,14 +805,14 @@ void PostProcessingOptionPage::encodingThreadFunc()
         while((frameId == last_frameId || questImg.empty()) && questVideoSrc->isValid()) {
             questVideoMngr->VideoTickImpl();
             questImg = questVideoMngr->getMostRecentImg(&quest_timestamp, &frameId);
-            qDebug() << "timestamp: " << quest_timestamp << ", frameId: " << frameId;
+            //qDebug() << "timestamp: " << quest_timestamp << ", frameId: " << frameId;
         }
         if(!questVideoSrc->isValid())
             break;
         while(cameraFrameId+1 < listCameraTimestamp.size() && absdiff(quest_timestamp, listCameraTimestamp[cameraFrameId+1]) < absdiff(quest_timestamp, listCameraTimestamp[cameraFrameId]))
         {
-            qDebug() << "target timestamp : " << quest_timestamp;
-            qDebug() << "currentTimestamp : " << listCameraTimestamp[cameraFrameId];
+            //qDebug() << "target timestamp : " << quest_timestamp;
+            //qDebug() << "currentTimestamp : " << listCameraTimestamp[cameraFrameId];
             (*capCameraVid) >> currentFrameCam;
             cameraFrameId++;
         }
