@@ -2,7 +2,7 @@
 #include "PostProcessingPage.h"
 #include <RPCameraInterface/VideoEncoder.h>
 #include <RPCameraInterface/OpenCVConverter.h>
-
+#include <QDebug>
 
 
 PostProcessingPage::PostProcessingPage(MainWindow *win)

@@ -46,8 +46,9 @@ void OpenCVWidget::updateImg()
             cv::circle(resizedImg, p, 3, cv::Scalar(0,0,255), 2);
         }
     }
-    //cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
-    QImage imdisplay((uchar*)resizedImg.data, resizedImg.cols, resizedImg.rows, resizedImg.step, QImage::Format_BGR888);
+    if(!resizedImg.empty())
+        cv::cvtColor(resizedImg, resizedImg, cv::COLOR_BGR2RGB);
+    QImage imdisplay((uchar*)resizedImg.data, resizedImg.cols, resizedImg.rows, resizedImg.step, QImage::Format_RGB888);
     setPixmap(QPixmap::fromImage(imdisplay));
 }
 

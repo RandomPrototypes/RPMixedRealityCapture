@@ -5,8 +5,6 @@
 #include <QPushButton>
 #include <QRadioButton>
 #include <QLineEdit>
-#include <QMediaDevices>
-#include <QCameraDevice>
 #include <QComboBox>
 #include <QImage>
 #include <QMessageBox>
@@ -15,6 +13,7 @@
 #include <chrono>
 #include <qprocess.h>
 #include <QTextEdit>
+#include <QDebug>
 
 #include <opencv2/opencv.hpp>
 #include "VideoInputMngr.h"

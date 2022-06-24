@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include <QMessageBox>
+#include <QDebug>
 
 #include "CalibrateCameraPosePage.h"
 #include "CheckCalibrationPage.h"

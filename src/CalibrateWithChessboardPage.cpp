@@ -2,6 +2,7 @@
 #include <QSpinBox>
 #include <QDir>
 #include <QMessageBox>
+#include <QDebug>
 
 CalibrateWithChessboardPage::CalibrateWithChessboardPage(MainWindow *win)
     :win(win)

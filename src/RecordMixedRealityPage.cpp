@@ -4,6 +4,7 @@
 #include "PostProcessingOptionPage.h"
 #include <QDir>
 #include <QFileDialog>
+#include <QDebug>
 
 RecordMixedRealityPage::RecordMixedRealityPage(MainWindow *win)
     :win(win)

@@ -12,6 +12,7 @@ set(CMAKE_AUTORCC ON)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
 set(EXTERNAL_INSTALL_LOCATION deps)
 
@@ -27,8 +28,8 @@ set(BufferedSocket_INCLUDE_DIR ${BufferedSocket_DIR}/../../../include)
 
 SET(tinyxml2 ${tinyxml2_SOURCE_DIR})
 
-find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets Multimedia REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Multimedia REQUIRED)
+find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets REQUIRED)
 find_package(OpenCV REQUIRED imgproc videoio calib3d)
 find_package(RPCameraInterface REQUIRED)
 find_package(libQuestMR REQUIRED)
@@ -120,7 +121,7 @@ else()
         )
 endif()
 
-target_link_libraries(RPMixedRealityCapture PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Multimedia ${OpenCV_LIBS})
+target_link_libraries(RPMixedRealityCapture PRIVATE Qt${QT_VERSION_MAJOR}::Widgets ${OpenCV_LIBS})
 
 target_link_libraries(RPMixedRealityCapture PRIVATE BufferedSocket RPCameraInterface libQuestMR)
 

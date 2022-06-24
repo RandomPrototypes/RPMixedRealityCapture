@@ -4,6 +4,7 @@
 #include "RecordMixedRealityPage.h"
 #include "PostProcessingOptionPage.h"
 #include <QRadioButton>
+#include <QDebug>
 using namespace RPCameraInterface;
 
 CameraSelectPage::CameraSelectPage(MainWindow *win)
