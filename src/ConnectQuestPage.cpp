@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ConnectQuestPage.h"
 #include "CameraSelectPage.h"
+#include "FirstMenuPage.h"
 #include <QMessageBox>
 
 ConnectQuestPage::ConnectQuestPage(MainWindow *win)
@@ -35,15 +36,26 @@ void ConnectQuestPage::setPage()
     ipAddressLayout->addWidget(ipAddressLabel);
     ipAddressLayout->addWidget(ipAddressField);
 
+    QHBoxLayout *bottomHLayout = new QHBoxLayout();
 
     connectButton = new QPushButton(win->isCalibrationSection ? "connect" : "next");
     connectButton->setStyleSheet("font-size: 20px;");
+    bottomHLayout->addWidget(connectButton);
+
+    bottomHLayout->addSpacing(50);
+
+    QPushButton *backToMenuButton = new QPushButton("Back to menu");
+    backToMenuButton->setMaximumWidth(500);
+    backToMenuButton->setStyleSheet("font-size: 20px;");
+    //layout->setAlignment(backToMenuButton, Qt::AlignHCenter);
+    bottomHLayout->addWidget(backToMenuButton);
 
     layout->addWidget(textLabel,Qt::AlignCenter);
     layout->addLayout(ipAddressLayout);
-    layout->addWidget(connectButton,Qt::AlignCenter);
+    layout->addLayout(bottomHLayout,Qt::AlignCenter);
 
     connect(connectButton, SIGNAL(clicked()), this, SLOT(onClickConnectButton()));
+    connect(backToMenuButton,SIGNAL(clicked()),this,SLOT(onClickBackToMenuButton()));
 
     win->mainWidget->setLayout(layout);
 }
@@ -69,8 +81,18 @@ void ConnectQuestPage::onTimer()
         QMessageBox msgBox;
         msgBox.setText("Can not connect to the quest...");
         msgBox.exec();
-        win->cameraSelectPage->setPage();
+        //win->cameraSelectPage->setPage();
+        win->questConnectionStatus = MainWindow::QuestConnectionStatus::NotConnected;
+        connectButton->setText(win->isCalibrationSection ? "connect" : "next");
+        connectButton->setEnabled(true);
     } else if(win->questConnectionStatus == MainWindow::QuestConnectionStatus::Connected) {
         win->cameraSelectPage->setPage();
     }
+}
+
+
+void ConnectQuestPage::onClickBackToMenuButton()
+{
+    win->stopQuestCommunicator();
+    win->firstMenuPage->setPage();
 }

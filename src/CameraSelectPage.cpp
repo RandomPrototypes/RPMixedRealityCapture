@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "CameraSelectPage.h"
+#include "FirstMenuPage.h"
 #include "CalibrationOptionPage.h"
 #include "RecordMixedRealityPage.h"
 #include "PostProcessingOptionPage.h"
@@ -46,12 +47,21 @@ void CameraSelectPage::setPage()
 
     cameraParamLayout = new QVBoxLayout();
 
+    QPushButton *backToMenuButton = new QPushButton("Back to menu");
+    //backToMenuButton->setMaximumWidth(300);
+    backToMenuButton->setStyleSheet("font-size: 20px;");
+    layout->setAlignment(backToMenuButton, Qt::AlignHCenter);
+
 
     layout->setAlignment(Qt::AlignCenter);
 
     layout->addWidget(textLabel,Qt::AlignCenter);
     layout->addLayout(hlayout);
     layout->addLayout(cameraParamLayout);
+    layout->addSpacing(50);
+    layout->addWidget(backToMenuButton);
+
+    connect(backToMenuButton,SIGNAL(clicked()),this,SLOT(onClickBackToMenuButton()));
 
     win->mainWidget->setLayout(layout);
 }
@@ -197,4 +207,10 @@ void CameraSelectPage::onClickSelectCameraButton()
         //win->recordMixedRealityPage->setPage();
         win->postProcessingOptionPage->setPage(true);
     }
+}
+
+void CameraSelectPage::onClickBackToMenuButton()
+{
+    win->stopQuestCommunicator();
+    win->firstMenuPage->setPage();
 }

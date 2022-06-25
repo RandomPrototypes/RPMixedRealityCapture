@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "PostProcessingOptionPage.h"
 #include "RecordMixedRealityPage.h"
+#include "FirstMenuPage.h"
 #include <RPCameraInterface/VideoEncoder.h>
 #include <RPCameraInterface/OpenCVConverter.h>
 #include <QFileDialog>
@@ -274,6 +275,12 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
 
     //layout->addLayout(backgroundSubtractorOptionLayout, 6, 3, 3, 1);
 
+    QPushButton *backToMenuButton = new QPushButton("Back to menu");
+    //backToMenuButton->setMaximumWidth(300);
+    backToMenuButton->setStyleSheet("font-size: 20px;");
+    layout->setAlignment(backToMenuButton, Qt::AlignHCenter);
+    layout->addWidget(backToMenuButton, 11, 0, 1, 6);
+
     win->mainWidget->setLayout(layout);
 
     connect(listCamBackgroundSubtractorCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(onSelectCamBackgroundSubtractorCombo(int)));
@@ -287,6 +294,9 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
 
     connect(selectPlayAreaButton,SIGNAL(clicked()),this,SLOT(onClickSelectPlayAreaButton()));
     connect(win->postProcessPreviewWidget,SIGNAL(clicked()),this,SLOT(onClickPreviewWidget()));
+
+    connect(backToMenuButton,SIGNAL(clicked()),this,SLOT(onClickBackToMenuButton()));
+
 
 
     refreshBackgroundSubtractorOption(false);
@@ -919,4 +929,11 @@ void PostProcessingOptionPage::onClickStartEncodingButton()
 void PostProcessingOptionPage::onClickSavePreviewSettingButton()
 {
     win->recordMixedRealityPage->setPage();
+}
+
+void PostProcessingOptionPage::onClickBackToMenuButton()
+{
+    win->stopQuestRecorder();
+    win->stopCamera();
+    win->firstMenuPage->setPage();
 }

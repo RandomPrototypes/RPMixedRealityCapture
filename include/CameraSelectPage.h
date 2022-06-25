@@ -18,6 +18,7 @@ public slots:
     void onClickSelectCameraButton();
     void onClickCameraButton(int i);
     void onSelectCameraCombo(int i);
+    void onClickBackToMenuButton();
 
 private:
     MainWindow *win;
