@@ -31,6 +31,7 @@ public slots:
     void onClickSelectPlayAreaButton();
     void onClickPreviewWidget();
     void onClickSavePreviewSettingButton();
+    void onClickBackToMenuButton();
 private:
     bool loadCameraTimestamps(std::string filename);
     void readCameraFrame(uint64_t timestamp);

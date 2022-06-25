@@ -14,6 +14,7 @@ public:
     void onTimer();
 public slots:
     void onClickConnectButton();
+    void onClickBackToMenuButton();
 
 private:
     MainWindow *win;
