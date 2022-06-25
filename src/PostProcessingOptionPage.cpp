@@ -48,7 +48,8 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
         startEncodingButton = NULL;
         QPushButton *savePreviewSettingButton = new QPushButton();
         savePreviewSettingButton->setText("save preview settings");
-        layout->addWidget(savePreviewSettingButton, 10, 0);
+        savePreviewSettingButton->setStyleSheet("font-size: 20px;");
+        layout->addWidget(savePreviewSettingButton, 10, 0, 1, 6);
         connect(savePreviewSettingButton,SIGNAL(clicked()),this,SLOT(onClickSavePreviewSettingButton()));
         win->startCamera();
         win->startQuestRecorder();
@@ -266,7 +267,7 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
     layout->addLayout(preview_checkbox_layout, 5, 0, 1, 2);
 
     QHBoxLayout *hlayout = new QHBoxLayout();
-    hlayout->addWidget(win->postProcessPreviewWidget);
+    hlayout->addWidget(win->postProcessPreviewWidget, 0, Qt::AlignTop);
 
     hlayout->addWidget(tabWidget);
 
