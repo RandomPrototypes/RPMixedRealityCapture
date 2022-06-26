@@ -23,25 +23,27 @@ void CalibrateCameraPosePage::setPage()
     win->clearMainWidget();
 
     QVBoxLayout *layout = new QVBoxLayout();
-    layout->setContentsMargins(0,0,0,0);
+    layout->setContentsMargins(0,0,0,30);
     //layout->setAlignment(Qt::AlignTop);
 
     win->instructionLabel = new QLabel;
     win->instructionLabel->setText("Capture a few calibration frames by moving the right controller in the scene and pressing the trigger button.\nFor best result, stay still for one second before pressing the trigger.");
+    win->instructionLabel->setMaximumHeight(100);
+    //hlayout = new QHBoxLayout();
+    //QPushButton *captureFrameButton = new QPushButton("capture frame");
 
-    hlayout = new QHBoxLayout();
-    QPushButton *captureFrameButton = new QPushButton("capture frame");
-    QPushButton *nextButton = new QPushButton("next");
+    nextButton = new QPushButton("next");
 
-    hlayout->addWidget(captureFrameButton);
-    hlayout->addWidget(nextButton);
+    //hlayout->addWidget(captureFrameButton);
+    //hlayout->addWidget(nextButton);
 
     QPushButton *backToMenuButton = new QPushButton("Back to menu");
     win->camPreviewWidget = new OpenCVWidget(cv::Size(1280, 720));
 
     win->camPreviewWidget->setImg(cv::Mat());
     layout->addWidget(win->instructionLabel);
-    layout->addLayout(hlayout);
+    //layout->addLayout(hlayout);
+    layout->addWidget(nextButton);
     layout->addWidget(win->camPreviewWidget);
     layout->addWidget(backToMenuButton);
 
@@ -49,7 +51,7 @@ void CalibrateCameraPosePage::setPage()
 
     win->startCamera();
 
-    connect(captureFrameButton,SIGNAL(clicked()),this,SLOT(onClickCaptureFrameButton()));
+    //connect(captureFrameButton,SIGNAL(clicked()),this,SLOT(onClickCaptureFrameButton()));
     connect(nextButton,SIGNAL(clicked()),this,SLOT(onClickAnnotateCalibFrameButton()));
     connect(win->camPreviewWidget,SIGNAL(clicked()),this,SLOT(onClickPreviewWidget()));
     connect(backToMenuButton,SIGNAL(clicked()),this,SLOT(onClickBackToMenuButton()));
@@ -108,7 +110,8 @@ void CalibrateCameraPosePage::onClickAnnotateCalibFrameButton()
         state = CalibState::annotate;
         win->camPreviewWidget->drawCursor = true;
         win->instructionLabel->setText("click on the center of the right controller on each frame\n");
-        clearLayout(hlayout);
+        //clearLayout(hlayout);
+        nextButton->setEnabled(false);
     }
 }
 
@@ -133,6 +136,7 @@ void CalibrateCameraPosePage::onTimer()
             win->camPreviewWidget->setImg(img);
         }
     } else if(state == CalibState::waitingCalibrationUpload) {
+        qDebug() << "waitingCalibrationUpload";
         if(win->questComThreadData->isCalibDataUploaded())
             win->checkCalibrationPage->setPage();
     }
@@ -174,7 +178,7 @@ void CalibrateCameraPosePage::onClickPreviewWidget()
 
 void CalibrateCameraPosePage::onClickBackToMenuButton()
 {
-    win->stopCamera();
+    //win->stopCamera();
     win->calibrationOptionPage->setPage();
 }
 

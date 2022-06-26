@@ -7,6 +7,8 @@ OpenCVWidget::OpenCVWidget(cv::Size viewSize)
 
     aspectRatio = (float)viewSize.width / (float)viewSize.height;
 
+    setMinimumSize(viewSize.width/4, viewSize.height/4);
+
     setMouseTracking(true);
 }
 
@@ -18,11 +20,11 @@ void OpenCVWidget::setImg(const cv::Mat& img)
 
 void OpenCVWidget::updateViewSize()
 {
-    int w = this->contentsRect().width()-2;
-    int h = this->contentsRect().height()-2;
+    int w = this->contentsRect().width();
+    int h = this->contentsRect().height();
     w = std::min(w, (int)(aspectRatio * h));
     h = (int)(w / aspectRatio);
-    //viewSize = cv::Size(this->width()-this->contentsMargins().left()-this->contentsMargins().right()-2, this->height()-this->contentsMargins().top()-this->contentsMargins().bottom()-2);
+    viewSize = cv::Size(w, h);//cv::Size(this->width()-this->contentsMargins().left()-this->contentsMargins().right()-2, this->height()-this->contentsMargins().top()-this->contentsMargins().bottom()-2);
     /*qDebug() << "contentsRect" << this->contentsRect().x() << " " << this->contentsRect().y() << " " << this->contentsRect().width() << " " << this->contentsRect().height();
     qDebug() << "contentsMargins" << this->contentsMargins().left() << " " << this->contentsMargins().top() << " " << this->contentsMargins().right() << " " << this->contentsMargins().bottom();
     qDebug() << "margin" << this->margin();
@@ -49,7 +51,7 @@ void OpenCVWidget::updateImg()
     if(!resizedImg.empty())
         cv::cvtColor(resizedImg, resizedImg, cv::COLOR_BGR2RGB);
     QImage imdisplay((uchar*)resizedImg.data, resizedImg.cols, resizedImg.rows, resizedImg.step, QImage::Format_RGB888);
-    setPixmap(QPixmap::fromImage(imdisplay));
+    setPixmap(QPixmap::fromImage(imdisplay).scaled(this->width(), this->height(), Qt::KeepAspectRatio));
 }
 
 cv::Point2d OpenCVWidget::localToImgPos(cv::Point2d p)

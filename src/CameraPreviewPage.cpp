@@ -13,7 +13,7 @@ void CameraPreviewPage::setPage()
     win->clearMainWidget();
 
     QVBoxLayout *layout = new QVBoxLayout();
-    layout->setContentsMargins(0,0,0,0);
+    layout->setContentsMargins(0,0,0,50);
     //layout->setAlignment(Qt::AlignTop);
 
     QLabel *calibrationLabel = new QLabel;
