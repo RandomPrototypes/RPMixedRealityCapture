@@ -23,6 +23,7 @@ private:
 
     MainWindow *win;
     QHBoxLayout *hlayout;
+    QPushButton *nextButton;
     bool estimateIntrinsic;
 
     enum class CalibState
