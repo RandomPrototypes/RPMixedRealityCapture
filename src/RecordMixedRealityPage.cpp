@@ -2,6 +2,7 @@
 #include "RecordMixedRealityPage.h"
 #include "PostProcessingPage.h"
 #include "PostProcessingOptionPage.h"
+#include "FirstMenuPage.h"
 #include <QDir>
 #include <QFileDialog>
 #include <QDebug>
@@ -17,7 +18,7 @@ void RecordMixedRealityPage::setPage()
     win->clearMainWidget();
 
     QVBoxLayout *layout = new QVBoxLayout();
-    layout->setContentsMargins(0,0,0,0);
+    layout->setContentsMargins(0,0,0,30);
     //layout->setAlignment(Qt::AlignTop);
 
     QLabel *calibrationLabel = new QLabel;
@@ -43,18 +44,22 @@ void RecordMixedRealityPage::setPage()
 
     cv::Size size(1280,720);
     qDebug() << "width " << win->width() << " height " << win->height();
-    if(win->height() < 900)
-        size = cv::Size(960,540);
+    //if(win->height() < 900)
+    //    size = cv::Size(960,540);
     mixedRealityPreviewWidget = new OpenCVWidget(size);
+
+    QPushButton *backToMenuButton = new QPushButton("Back to menu");
 
     layout->addWidget(calibrationLabel);
     layout->addWidget(startRecordingButton);
     //layout->addWidget(tabWidget);
     layout->addWidget(mixedRealityPreviewWidget);
+    layout->addWidget(backToMenuButton);
 
     win->mainWidget->setLayout(layout);
 
     connect(startRecordingButton,SIGNAL(clicked()),this,SLOT(onClickStartRecordingButton()));
+    connect(backToMenuButton,SIGNAL(clicked()),this,SLOT(onClickBackToMenuButton()));
 
     win->startCamera();
     win->startQuestRecorder();
@@ -125,5 +130,12 @@ void RecordMixedRealityPage::onTimer()
     }
     if(!currentQuestImg.empty() || !currentCamImg.empty())
         mixedRealityPreviewWidget->setImg(win->composeMixedRealityImg(currentQuestImg, currentCamImg, win->previewCompositorConfig));
+}
+
+void RecordMixedRealityPage::onClickBackToMenuButton()
+{
+    win->stopCamera();
+    win->stopQuestRecorder();
+    win->firstMenuPage->setPage();
 }
 

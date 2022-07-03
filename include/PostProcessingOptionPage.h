@@ -20,6 +20,7 @@ public slots:
     void onClickCamRecordingFileBrowseButton();
     void onClickStartEncodingButton();
     void onSelectCamBackgroundSubtractorCombo(int);
+    void onClickQuestShowForegroundCheckbox();
     void onSelectQuestBackgroundSubtractorCombo(int);
     void onClickCamImgCheckbox();
     void onClickQuestImgCheckbox();
@@ -70,6 +71,7 @@ private:
     QGridLayout *layout;
     QGridLayout *camBackgroundSubtractorOptionLayout;
     QGridLayout *questBackgroundSubtractorOptionLayout;
+    QCheckBox *questShowForegroundCheckBox;
 
     QToolButton *playButton;
     QLabel *durationLabel;

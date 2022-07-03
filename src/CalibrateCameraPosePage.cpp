@@ -19,7 +19,8 @@ void CalibrateCameraPosePage::setPage()
 {
     win->listCalibrationFrames.clear();
     win->currentPageName = MainWindow::PageName::recalibratePose;
-    state = CalibState::capture;
+    state = CalibState::captureCamOrig;
+    capturedCamOrig = false;
     win->clearMainWidget();
 
     QVBoxLayout *layout = new QVBoxLayout();
@@ -27,12 +28,12 @@ void CalibrateCameraPosePage::setPage()
     //layout->setAlignment(Qt::AlignTop);
 
     win->instructionLabel = new QLabel;
-    win->instructionLabel->setText("Capture a few calibration frames by moving the right controller in the scene and pressing the trigger button.\nFor best result, stay still for one second before pressing the trigger.");
+    win->instructionLabel->setText("Put the right controller as close as possible to the camera and press the trigger button.\nFor best result, stay still for one second before pressing the trigger.");
     win->instructionLabel->setMaximumHeight(100);
     //hlayout = new QHBoxLayout();
     //QPushButton *captureFrameButton = new QPushButton("capture frame");
 
-    nextButton = new QPushButton("next");
+    nextButton = new QPushButton("Skip");
 
     //hlayout->addWidget(captureFrameButton);
     //hlayout->addWidget(nextButton);
@@ -90,41 +91,53 @@ bool CalibrateCameraPosePage::calibratePose()
     return true;
 }
 
-void CalibrateCameraPosePage::onClickCaptureFrameButton()
-{
-    capturePoseCalibFrame();
-}
-
 void CalibrateCameraPosePage::onClickAnnotateCalibFrameButton()
 {
-    if(!estimateIntrinsic && win->listCalibrationFrames.size() < 4) {
-        QMessageBox msgBox;
-        msgBox.setText("You must capture at least 4 frames for calibration!!!");
-        msgBox.exec();
-    } else if(estimateIntrinsic && win->listCalibrationFrames.size() < 6) {
-        QMessageBox msgBox;
-        msgBox.setText("You must capture at least 6 frames for calibration!!!");
-        msgBox.exec();
+    if(state == CalibState::captureCamOrig) {
+        capturedCamOrig = false;
+        win->instructionLabel->setText("Capture a few calibration frames by moving the right controller in the scene and pressing the trigger button.\nFor best result, stay still for one second before pressing the trigger.");
+        state = CalibState::capture;
     } else {
-        win->currentCalibrationFrame = 0;
-        state = CalibState::annotate;
-        win->camPreviewWidget->drawCursor = true;
-        win->instructionLabel->setText("click on the center of the right controller on each frame\n");
-        //clearLayout(hlayout);
-        nextButton->setEnabled(false);
+        if(!estimateIntrinsic && win->listCalibrationFrames.size() < 4) {
+            QMessageBox msgBox;
+            msgBox.setText("You must capture at least 4 frames for calibration!!!");
+            msgBox.exec();
+        } else if(estimateIntrinsic && win->listCalibrationFrames.size() < 6) {
+            QMessageBox msgBox;
+            msgBox.setText("You must capture at least 6 frames for calibration!!!");
+            msgBox.exec();
+        } else {
+            win->currentCalibrationFrame = 0;
+            state = CalibState::annotate;
+            win->camPreviewWidget->drawCursor = true;
+            win->instructionLabel->setText("click on the center of the right controller on each frame\n");
+            //clearLayout(hlayout);
+            nextButton->setEnabled(false);
+        }
     }
 }
 
 void CalibrateCameraPosePage::onTimer()
 {
-    if(state == CalibState::capture) {
+    if(state == CalibState::captureCamOrig || state == CalibState::capture) {
         if(win->videoInput->hasNewImg)
             win->camPreviewWidget->setImg(win->videoInput->getImgCopy());
 
         if(win->questComThreadData != NULL && win->questComThreadData->getTriggerCount() > currentTriggerCount)
         {
-            qDebug() << "trigger";
-            capturePoseCalibFrame();
+            if(state == CalibState::captureCamOrig){
+                if(win->lastFrameData.isRightHandValid())
+                {
+                    const double *pos = win->lastFrameData.right_hand_pos;
+                    camOrig = cv::Point3d(pos[0], pos[1], pos[2]);
+                    capturedCamOrig = true;
+                    win->instructionLabel->setText("Capture a few calibration frames by moving the right controller in the scene and pressing the trigger button.\nFor best result, stay still for one second before pressing the trigger.");
+                    nextButton->setText("Calibrate");
+                    state = CalibState::capture;
+                }
+            } else {
+                capturePoseCalibFrame();
+            }
             currentTriggerCount = win->questComThreadData->getTriggerCount();
         }
     } else if(state == CalibState::annotate) {
@@ -146,31 +159,38 @@ void CalibrateCameraPosePage::onClickPreviewWidget()
 {
     if(state == CalibState::annotate)
     {
-        win->listCalibrationFrames[win->currentCalibrationFrame].rightControllerImgPos = win->camPreviewWidget->localToImgPos(win->camPreviewWidget->mousePos);
+        win->listCalibrationFrames[win->currentCalibrationFrame].rightControllerImgPos = win->camPreviewWidget->mousePos;
         if(win->currentCalibrationFrame + 1 == win->listCalibrationFrames.size())
         {
             auto calibDataStr = win->questComThreadData->getCalibData();
+            libQuestMR::QuestCalibData calibData;
             if(calibDataStr.size() > 0)
-            {
-                libQuestMR::QuestCalibData calibData;
                 calibData.loadXMLString(calibDataStr.c_str());
-                std::vector<cv::Point3d> listHand3D;
-                std::vector<cv::Point2d> listHand2D;
-                for(int i = 0; i < win->listCalibrationFrames.size(); i++)
-                {
-                    listHand2D.push_back(win->listCalibrationFrames[i].rightControllerImgPos);
-                    listHand3D.push_back(win->listCalibrationFrames[i].frameData.getRightHandPos());
+            calibData.setImageSize(win->listCalibrationFrames[0].img.size());
+            std::vector<cv::Point3d> listHand3D;
+            std::vector<cv::Point2d> listHand2D;
+            for(int i = 0; i < win->listCalibrationFrames.size(); i++)
+            {
+                listHand2D.push_back(win->listCalibrationFrames[i].rightControllerImgPos);
+                listHand3D.push_back(win->listCalibrationFrames[i].frameData.getRightHandPos());
+            }
+            if(estimateIntrinsic) {
+                if(capturedCamOrig) {
+                    calibData.calibrateCamIntrinsicAndPose(camOrig, listHand3D, listHand2D);
+                } else {
+                    calibData.calibrateCamIntrinsicAndPose(listHand3D, listHand2D);
                 }
-                if(estimateIntrinsic) {
-                    calibData.calibrateCamIntrinsicAndPose(listHand3D, listHand2D, win->listCalibrationFrames[0].img.size());
+            } else {
+                if(capturedCamOrig) {
+                    calibData.calibrateCamPose(camOrig, listHand3D, listHand2D);
                 } else {
                     calibData.calibrateCamPose(listHand3D, listHand2D);
                 }
-                calibDataStr = calibData.generateXMLString();
-                win->questComThreadData->sendCalibDataToQuest(calibDataStr);
-                state = CalibState::waitingCalibrationUpload;
-                qDebug() << calibDataStr.c_str();
             }
+            calibDataStr = calibData.generateXMLString();
+            win->questComThreadData->sendCalibDataToQuest(calibDataStr);
+            state = CalibState::waitingCalibrationUpload;
+            qDebug() << calibDataStr.c_str();
         }
         else win->currentCalibrationFrame = (win->currentCalibrationFrame+1) % win->listCalibrationFrames.size();
     }

@@ -42,9 +42,7 @@ void OpenCVWidget::updateImg()
         cv::resize(img, resizedImg, viewSize);
         if(drawCursor)
         {
-            cv::Point2d p = mousePos;
-            p.x = p.x * viewSize.width / img.cols;
-            p.y = p.y * viewSize.height / img.rows;
+            cv::Point2d p = imgToLocalPos(mousePos);
             cv::circle(resizedImg, p, 3, cv::Scalar(0,0,255), 2);
         }
     }
@@ -56,9 +54,15 @@ void OpenCVWidget::updateImg()
 
 cv::Point2d OpenCVWidget::localToImgPos(cv::Point2d p)
 {
-    updateViewSize();
     p.x = (p.x) * img.cols / viewSize.width;
     p.y = (p.y) * img.rows / viewSize.height;
+    return p;
+}
+
+cv::Point2d OpenCVWidget::imgToLocalPos(cv::Point2d p)
+{
+    p.x = (p.x) * viewSize.width / img.cols;
+    p.y = (p.y) * viewSize.height / img.rows;
     return p;
 }
 
