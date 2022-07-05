@@ -167,6 +167,10 @@ void CalibrateCameraPosePage::onClickPreviewWidget()
             if(calibDataStr.size() > 0)
                 calibData.loadXMLString(calibDataStr.c_str());
             calibData.setImageSize(win->listCalibrationFrames[0].img.size());
+            for(int i = 0; i < 3; i++)
+                calibData.raw_translation[i] = win->listCalibrationFrames[0].frameData.raw_pos[i];
+            for(int i = 0; i < 4; i++)
+                calibData.raw_rotation[i] = win->listCalibrationFrames[0].frameData.raw_rot[i];
             std::vector<cv::Point3d> listHand3D;
             std::vector<cv::Point2d> listHand2D;
             for(int i = 0; i < win->listCalibrationFrames.size(); i++)
