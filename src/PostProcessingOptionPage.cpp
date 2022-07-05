@@ -23,13 +23,20 @@ PostProcessingOptionPage::PostProcessingOptionPage(MainWindow *win)
 void PostProcessingOptionPage::setPage(bool isLivePreview)
 {
     this->isLivePreview = isLivePreview;
-    MixedRealityCompositorConfig& config = getCompositorConfig();
+    MixedRealityCompositorConfig& config = getCompositorConfig();  
     config.videoSize = cv::Size(1280,720);
     config.camSubsampling = 1;
     config.questSubsampling = 1;
     config.camErosion = 0;
+    config.showForeground = false;
     config.questErosion = 0;
     config.camDelayMs = 0;
+    config.camTranslation = cv::Point(0,0);
+    config.useBlackBackground = false;
+    config.useGreenBackground = false;
+    config.useMatteImg = false;
+    config.useCamImg = true;
+    config.useQuestImg = true;
     win->currentPageName = MainWindow::PageName::postProcessingOption;
     win->clearMainWidget();
 
@@ -134,14 +141,36 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
         getCompositorConfig().camDelayMs = val;
     });
 
+    QLabel *translateLabel = new QLabel;
+    translateLabel->setText("translate :");
+    QHBoxLayout *translateSpinLayout = new QHBoxLayout;
+    QSpinBox *translateSpinX = new QSpinBox();
+    translateSpinX->setValue(0);
+    translateSpinX->setMinimum(-1000);
+    translateSpinX->setMaximum(1000);
+    translateSpinLayout->addWidget(translateSpinX);
+    QSpinBox *translateSpinY = new QSpinBox();
+    translateSpinY->setValue(0);
+    translateSpinY->setMinimum(-1000);
+    translateSpinY->setMaximum(1000);
+    translateSpinLayout->addWidget(translateSpinY);
+    camSettingLayout->addWidget(translateLabel, 2, 0);
+    camSettingLayout->addLayout(translateSpinLayout, 2, 1);
+    connect(translateSpinX,QOverload<int>::of(&QSpinBox::valueChanged),[=](int val){
+        getCompositorConfig().camTranslation.x = val;
+    });
+    connect(translateSpinY,QOverload<int>::of(&QSpinBox::valueChanged),[=](int val){
+        getCompositorConfig().camTranslation.y = val;
+    });
+
     QLabel *backgroundSubtractorLabel = new QLabel;
     backgroundSubtractorLabel->setText("Background subtractor method:");
     listCamBackgroundSubtractorCombo = new QComboBox;
     listCamBackgroundSubtractorCombo->addItem(QString("None"));
     for(int i = 0; i < libQuestMR::getBackgroundSubtractorCount(); i++)
         listCamBackgroundSubtractorCombo->addItem(QString(libQuestMR::getBackgroundSubtractorName(i).c_str()));
-    camSettingLayout->addWidget(backgroundSubtractorLabel, 2, 0);
-    camSettingLayout->addWidget(listCamBackgroundSubtractorCombo, 2, 1);
+    camSettingLayout->addWidget(backgroundSubtractorLabel, 3, 0);
+    camSettingLayout->addWidget(listCamBackgroundSubtractorCombo, 3, 1);
 
     QLabel *camSubsamplingLabel = new QLabel;
     camSubsamplingLabel->setText("subsampling:");
@@ -150,8 +179,8 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
     camSubsamplingSpin->setMinimum(1);
     camSubsamplingSpin->setMaximum(16);
     camSubsamplingSpin->setSingleStep(1);
-    camSettingLayout->addWidget(camSubsamplingLabel, 3, 0);
-    camSettingLayout->addWidget(camSubsamplingSpin, 3, 1);
+    camSettingLayout->addWidget(camSubsamplingLabel, 4, 0);
+    camSettingLayout->addWidget(camSubsamplingSpin, 4, 1);
     connect(camSubsamplingSpin,QOverload<int>::of(&QSpinBox::valueChanged),[=](int val){
         MixedRealityCompositorConfig& config = getCompositorConfig();
         config.camSubsampling = val;
@@ -166,20 +195,30 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
     camErosionSpin->setMinimum(-30);
     camErosionSpin->setMaximum(30);
     camErosionSpin->setSingleStep(1);
-    camSettingLayout->addWidget(camErosionLabel, 4, 0);
-    camSettingLayout->addWidget(camErosionSpin, 4, 1);
+    camSettingLayout->addWidget(camErosionLabel, 5, 0);
+    camSettingLayout->addWidget(camErosionSpin, 5, 1);
     connect(camErosionSpin,QOverload<int>::of(&QSpinBox::valueChanged),[=](int val){
         MixedRealityCompositorConfig& config = getCompositorConfig();
         config.camErosion = val;
     });
 
     camBackgroundSubtractorOptionLayout = new QGridLayout();
-    camSettingLayout->addLayout(camBackgroundSubtractorOptionLayout, 5, 0, 3, 2);
+    camSettingLayout->addLayout(camBackgroundSubtractorOptionLayout, 6, 0, 3, 2);
 
 
     QWidget *questBackgroundSubtractorOptionWidget = new QWidget();
     QGridLayout *questSettingLayout = new QGridLayout();
     questBackgroundSubtractorOptionWidget->setLayout(questSettingLayout);
+
+    QLabel *questShowForegroundLabel = new QLabel;
+    questShowForegroundLabel->setText("Show foreground");
+    questShowForegroundCheckBox = new QCheckBox;
+    questShowForegroundCheckBox->setChecked(false);
+    connect(questShowForegroundCheckBox,SIGNAL(clicked()),this,SLOT(onClickQuestShowForegroundCheckbox()));
+
+    questSettingLayout->addWidget(questShowForegroundLabel, 1, 0);
+    questSettingLayout->addWidget(questShowForegroundCheckBox, 1, 1);
+
 
     QLabel *questBackgroundSubtractorLabel = new QLabel;
     questBackgroundSubtractorLabel->setText("Background subtractor method:");
@@ -187,8 +226,8 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
     listQuestBackgroundSubtractorCombo->addItem(QString("None"));
     for(int i = 0; i < libQuestMR::getBackgroundSubtractorCount(); i++)
         listQuestBackgroundSubtractorCombo->addItem(QString(libQuestMR::getBackgroundSubtractorName(i).c_str()));
-    questSettingLayout->addWidget(questBackgroundSubtractorLabel, 1, 0);
-    questSettingLayout->addWidget(listQuestBackgroundSubtractorCombo, 1, 1);
+    questSettingLayout->addWidget(questBackgroundSubtractorLabel, 2, 0);
+    questSettingLayout->addWidget(listQuestBackgroundSubtractorCombo, 2, 1);
 
     QLabel *questSubsamplingLabel = new QLabel;
     questSubsamplingLabel->setText("subsampling:");
@@ -197,8 +236,8 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
     questSubsamplingSpin->setMinimum(1);
     questSubsamplingSpin->setMaximum(16);
     questSubsamplingSpin->setSingleStep(1);
-    questSettingLayout->addWidget(questSubsamplingLabel, 2, 0);
-    questSettingLayout->addWidget(questSubsamplingSpin, 2, 1);
+    questSettingLayout->addWidget(questSubsamplingLabel, 3, 0);
+    questSettingLayout->addWidget(questSubsamplingSpin, 3, 1);
     connect(questSubsamplingSpin,QOverload<int>::of(&QSpinBox::valueChanged),[=](int val){
         MixedRealityCompositorConfig& config = getCompositorConfig();
         config.questSubsampling = val;
@@ -213,15 +252,15 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
     questErosionSpin->setMinimum(-30);
     questErosionSpin->setMaximum(30);
     questErosionSpin->setSingleStep(1);
-    questSettingLayout->addWidget(questErosionLabel, 3, 0);
-    questSettingLayout->addWidget(questErosionSpin, 3, 1);
+    questSettingLayout->addWidget(questErosionLabel, 4, 0);
+    questSettingLayout->addWidget(questErosionSpin, 4, 1);
     connect(questErosionSpin,QOverload<int>::of(&QSpinBox::valueChanged),[=](int val){
         MixedRealityCompositorConfig& config = getCompositorConfig();
         config.questErosion = val;
     });
 
     questBackgroundSubtractorOptionLayout = new QGridLayout();
-    questSettingLayout->addLayout(questBackgroundSubtractorOptionLayout, 4, 0, 3, 2);
+    questSettingLayout->addLayout(questBackgroundSubtractorOptionLayout, 5, 0, 3, 2);
 
     tabWidget->addTab(camBackgroundSubtractorOptionWidget, tr("Camera settings"));
     tabWidget->addTab(questBackgroundSubtractorOptionWidget, tr("Quest settings"));
@@ -573,6 +612,12 @@ void PostProcessingOptionPage::updateRecordingFile()
     updatePreviewImg();
 }
 
+void PostProcessingOptionPage::onClickQuestShowForegroundCheckbox()
+{
+    MixedRealityCompositorConfig& config = getCompositorConfig();
+    config.showForeground = questShowForegroundCheckBox->isChecked();
+    updatePreviewImg();
+}
 
 void PostProcessingOptionPage::onClickQuestRecordingFileBrowseButton()
 {
@@ -720,6 +765,7 @@ void PostProcessingOptionPage::onClickStopButton()
     playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPlay));
     if(state == PostProcessingState::encodingStarted) {
         state = PostProcessingState::encodingStopped;
+        startEncodingButton->setText("start encoding");
     } else {
         state = PostProcessingState::previewPause;
         updateRecordingFile();
@@ -892,12 +938,12 @@ void PostProcessingOptionPage::onClickStartEncodingButton()
         return ;
     }
 
-    if(config.camBackgroundSubtractor == NULL) {
+    /*if(config.camBackgroundSubtractor == NULL) {
         QMessageBox msgBox;
         msgBox.setText("You must select a background subtraction method");
         msgBox.exec();
         return ;
-    }
+    }*/
 
     QFileDialog dialog(NULL);
     dialog.setFileMode(QFileDialog::AnyFile);
@@ -910,9 +956,12 @@ void PostProcessingOptionPage::onClickStartEncodingButton()
         QStringList filenames = dialog.selectedFiles();
         if(filenames.size() == 1)
         {
+
             state = PostProcessingState::encodingStarted;
 
             encodingFilename = filenames[0].toStdString();
+            if(!endsWith(encodingFilename, ".mp4"))
+                encodingFilename += ".mp4";
             qDebug() << encodingFilename.c_str();
 
             startEncodingButton->setText("stop encoding");

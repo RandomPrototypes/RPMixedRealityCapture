@@ -15,7 +15,6 @@ public:
     bool calibratePose();
     void setEstimateIntrinsic(bool val);
 public slots:
-    void onClickCaptureFrameButton();
     void onClickAnnotateCalibFrameButton();
     void onClickPreviewWidget();
     void onClickBackToMenuButton();
@@ -28,12 +27,15 @@ private:
 
     enum class CalibState
     {
+        captureCamOrig,
         capture,
         annotate,
         waitingCalibrationUpload
     };
 
     CalibState state;
+    cv::Point3d camOrig;
+    bool capturedCamOrig;
     uint32_t currentTriggerCount = 0;
 };
 

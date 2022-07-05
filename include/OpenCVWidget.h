@@ -18,6 +18,7 @@ public:
     void mouseReleaseEvent(QMouseEvent *releaseEvent);
 
     cv::Point2d localToImgPos(cv::Point2d p);
+    cv::Point2d imgToLocalPos(cv::Point2d p);
     void updateImg();
     void updateViewSize();
 

@@ -13,6 +13,7 @@ public:
     void onTimer();
 public slots:
     void onClickStartRecordingButton();
+    void onClickBackToMenuButton();
 private:
     MainWindow *win;
     QPushButton *startRecordingButton;
