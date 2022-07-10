@@ -164,7 +164,7 @@ void MainWindow::videoThreadFunc(std::string cameraId)
         return ;
     }
     if(currentCameraFormatId >= 0 && currentCameraFormatId < listCameraFormats.size())
-        cam->selectFormat(currentCameraFormatId);
+        cam->selectFormat(listCameraFormats[currentCameraFormatId]);
 
 
     VideoContainerType videoContainerType = VideoContainerType::NONE;
@@ -204,7 +204,7 @@ void MainWindow::videoThreadFunc(std::string cameraId)
         //cap >> img;
         if(img.empty())
             break;
-        qDebug() << "recv frame";
+        qDebug() << "recv frame " << camImg->getImageFormat().toString().c_str();
         if(recording)
         {
             if(!recordingStarted)
