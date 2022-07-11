@@ -16,6 +16,7 @@ CameraSelectPage::CameraSelectPage(MainWindow *win)
 
 void CameraSelectPage::setPage()
 {
+    qDebug() << "CameraSelectPage::setPage()";
     win->currentPageName = MainWindow::PageName::cameraSelect;
     win->clearMainWidget();
     QVBoxLayout *layout = new QVBoxLayout();
@@ -68,6 +69,7 @@ void CameraSelectPage::setPage()
 
 void CameraSelectPage::refreshCameraComboBox(std::shared_ptr<RPCameraInterface::CameraEnumerator> camEnumerator)
 {
+    qDebug() << "refreshCameraComboBox";
     listCameraCombo->clear();
     camEnumerator->detectCameras();
 
@@ -75,15 +77,18 @@ void CameraSelectPage::refreshCameraComboBox(std::shared_ptr<RPCameraInterface::
     for (size_t i = 0; i < camEnumerator->count(); i++) {
         listCameraIds.push_back(camEnumerator->getCameraId(i));
         listCameraCombo->addItem(QString(camEnumerator->getCameraName(i)));
+        qDebug() << "listCameraCombo->addItem(" << camEnumerator->getCameraName(i) << ")";
     }
     refreshCameraFormatComboBox();
 }
 
 void CameraSelectPage::refreshCameraFormatComboBox()
 {
+    qDebug() << "refreshCameraFormatComboBox";
     listCameraFormatCombo->clear();
     if(listCameraCombo->currentIndex() >= 0 && listCameraCombo->currentIndex() < listCameraIds.size()) {
         std::shared_ptr<CameraInterface> cam = getCameraInterface(win->listCameraEnumerator[win->currentCameraEnumId]->getBackend());
+        qDebug() << "cam->open(" << listCameraIds[listCameraCombo->currentIndex()].c_str() << ")";
         if(!cam->open(listCameraIds[listCameraCombo->currentIndex()].c_str()))
         {
             qDebug() << cam->getErrorMsg();
@@ -93,6 +98,7 @@ void CameraSelectPage::refreshCameraFormatComboBox()
         for (size_t i = 0; i < listFormats.size(); i++) {
             std::string format = std::to_string(listFormats[i].width) + "x" + std::to_string(listFormats[i].height) + " ("+toString(listFormats[i].type).c_str()+")";
             listCameraFormatCombo->addItem(QString(format.c_str()));
+            qDebug() << "listCameraFormatCombo->addItem(" << format.c_str() << ")";
         }
         cam->close();
         win->listCameraFormats = listFormats;
