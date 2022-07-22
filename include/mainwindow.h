@@ -106,6 +106,8 @@ private slots:
     void onClickPreviewWidget();
     void onTimer();
 protected:
+    void closeEvent(QCloseEvent *event);
+
     friend class FirstMenuPage;
     friend class CalibrateWithChessboardPage;
     friend class CalibrateCameraPosePage;

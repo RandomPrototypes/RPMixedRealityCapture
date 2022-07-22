@@ -5,6 +5,7 @@
 #include "RecordMixedRealityPage.h"
 #include "PostProcessingOptionPage.h"
 #include <QRadioButton>
+#include <QToolButton>
 #include <QDebug>
 using namespace RPCameraInterface;
 
@@ -91,7 +92,7 @@ void CameraSelectPage::refreshCameraFormatComboBox()
         qDebug() << "cam->open(" << listCameraIds[listCameraCombo->currentIndex()].c_str() << ")";
         if(!cam->open(listCameraIds[listCameraCombo->currentIndex()].c_str()))
         {
-            qDebug() << cam->getErrorMsg();
+            qDebug() << "!cam->open : " << cam->getErrorMsg();
             return ;
         }
         std::vector<ImageFormat> listFormats = cam->getListAvailableFormat();
@@ -128,11 +129,13 @@ void CameraSelectPage::setCameraParamBox(std::shared_ptr<RPCameraInterface::Came
             QLabel *textLabel = new QLabel;
             textLabel->setText((std::string(field->getText())+": ").c_str());
             hLayout2->addWidget(textLabel);
+            textLabel->setMaximumWidth(100);
             if(!strcmp(field->getType(), "text"))
             {
                 QLineEdit *lineEdit = new QLineEdit();
                 lineEdit->setText(field->getValue());
                 lineEdit->setContentsMargins(10,30,10,30);
+                lineEdit->setMaximumWidth(300);
 
                 field->setExtraParam(lineEdit);
 
@@ -141,7 +144,9 @@ void CameraSelectPage::setCameraParamBox(std::shared_ptr<RPCameraInterface::Came
             vLayout1->addLayout(hLayout2);
         }
         hLayout1->addLayout(vLayout1);
-        QPushButton *refreshButton = new QPushButton("refresh");
+        QToolButton *refreshButton = new QToolButton();
+        refreshButton->setIcon(win->style()->standardIcon(QStyle::SP_BrowserReload));
+        refreshButton->setMaximumWidth(50);
         connect(refreshButton,&QPushButton::clicked,[=]()
         {
             for(size_t i = 0; i < camEnumerator->getNbParamField(); i++)

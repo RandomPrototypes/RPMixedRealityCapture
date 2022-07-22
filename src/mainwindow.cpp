@@ -373,7 +373,7 @@ void MainWindow::startQuestCommunicator()
 
 void MainWindow::stopCamera()
 {
-    if(videoInput->videoThread != NULL) {
+    if(videoInput->videoThread != NULL && !videoInput->closed) {
         qDebug() << "stop camera...\n";
         videoInput->closed = true;
         videoInput->videoThread->join();
@@ -385,7 +385,7 @@ void MainWindow::stopCamera()
 
 void MainWindow::stopQuestRecorder()
 {
-    if(questInput->videoThread != NULL) {
+    if(questInput->videoThread != NULL && !questInput->closed) {
         qDebug() << "stop quest recorder...\n";
         questInput->closed = true;
         questInput->videoThread->join();
@@ -534,4 +534,11 @@ cv::Mat MainWindow::composeMixedRealityImg(const cv::Mat& questImg, const cv::Ma
 cv::Rect MainWindow::adjustROIWithSubsampling(cv::Rect ROI, int subsampling)
 {
     return cv::Rect(ROI.x/subsampling, ROI.y/subsampling, ROI.width/subsampling, ROI.height/subsampling);
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    stopCamera();
+    stopQuestCommunicator();
+    stopQuestRecorder();
 }
