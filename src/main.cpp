@@ -37,7 +37,7 @@ void calibrateCamPose(libQuestMR::QuestCalibData &calibData, cv::Point3d camOrig
     //normalize(K^-1 * (listPoint2d[i].x, listPoint2d[i].y, 1)) = R * normalize(listPoint3d[i] - camOrig)
     std::vector<cv::Point3d> ray(listPoint3d.size()), p3d(listPoint3d.size());
     cv::Mat K_inv = (calibData.getFlipXMat()*calibData.getCameraMatrix()).inv();
-    qDebug() << "K_inv:\n" << mat2str<double>(K_inv).c_str();
+    //qDebug() << "K_inv:\n" << mat2str<double>(K_inv).c_str();
     const double *K_inv_ptr = K_inv.ptr<double>(0);
     for(size_t i = 0; i < listPoint2d.size(); i++) {
         cv::Point3d p(-listPoint2d[i].x, -listPoint2d[i].y, -1);
@@ -46,7 +46,7 @@ void calibrateCamPose(libQuestMR::QuestCalibData &calibData, cv::Point3d camOrig
         p1 /= sqrt(p1.dot(p1));
         cv::Point3d p2 = p;
         p2 /= sqrt(p2.dot(p2));
-        qDebug() << "("<<p1.x << ","<<p1.y<<","<<p1.z<<") == " << "("<<p2.x << ","<<p2.y<<","<<p2.z<<")";
+        //qDebug() << "("<<p1.x << ","<<p1.y<<","<<p1.z<<") == " << "("<<p2.x << ","<<p2.y<<","<<p2.z<<")";
         //p /= p.z;
         p /= sqrt(p.dot(p));
         ray[i].x = K_inv_ptr[0] * p.x + K_inv_ptr[1] * p.y + K_inv_ptr[2] * p.z;
@@ -67,7 +67,7 @@ void calibrateCamPose(libQuestMR::QuestCalibData &calibData, cv::Point3d camOrig
         p2.y = R_ptr[3] * p.x + R_ptr[4] * p.y + R_ptr[5] * p.z;
         p2.z = R_ptr[6] * p.x + R_ptr[7] * p.y + R_ptr[8] * p.z;
         cv::Point3d p3 = p2 / sqrt(p2.dot(p2));
-        qDebug() << "diff " << sqrt((ray[i]-p3).dot(ray[i]-p3));
+        //qDebug() << "diff " << sqrt((ray[i]-p3).dot(ray[i]-p3));
     }
 }
 
