@@ -29,9 +29,9 @@ git clone --branch $libQuestMR_branch https://github.com/RandomPrototypes/libQue
 cd libQuestMR
 git pull
 if [ $USE_CUDA = 1 ]; then
-	bash buildWithDeps.sh --cuda  || exit 1
+	bash buildWithDeps.sh --no_demo --cuda  || exit 1
 else
-	bash buildWithDeps.sh  || exit 1
+	bash buildWithDeps.sh --no_demo || exit 1
 fi
 cd $BASE_FOLDER
 
@@ -39,7 +39,7 @@ mkdir build
 mkdir install
 cd build
 
-CUSTOM_CMAKE=$DEPS_FOLDER/libQuestMR/deps/cmake-3.22.3/install/bin/cmake
+CUSTOM_CMAKE=cmake #$DEPS_FOLDER/libQuestMR/deps/cmake-3.22.3/install/bin/cmake
 BUFFERED_SOCKET_CMAKE_DIR=$DEPS_FOLDER/libQuestMR/deps/BufferedSocket/install/lib/cmake/BufferedSocket
 RP_CAMERA_INTERFACE_CMAKE_DIR=$DEPS_FOLDER/libQuestMR/deps/RPCameraInterface/install/lib/cmake/RPCameraInterface
 LIBQUESTMR_CMAKE_DIR=$DEPS_FOLDER/libQuestMR/install/lib/cmake/libQuestMR
