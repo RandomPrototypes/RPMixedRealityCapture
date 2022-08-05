@@ -51,7 +51,7 @@ cp RPMixedRealityCapture $BASE_FOLDER/install
 cd $BASE_FOLDER/install
 ln -sfn $DEPS_FOLDER/libQuestMR/deps/BufferedSocket/install/lib/libBufferedSocket.so.0.1 libBufferedSocket.so.0.1
 ln -sfn $DEPS_FOLDER/libQuestMR/deps/RPCameraInterface/install/lib/libRPCameraInterface.so libRPCameraInterface.so
-ln -sfn $DEPS_FOLDER/libQuestMR/install/lib/libonnxruntime.so.1.10.0 libonnxruntime.so.1.10.0
+ln -sfn $DEPS_FOLDER/libQuestMR/install/lib/libonnxruntime.so.1.12.1 libonnxruntime.so.1.12.1
 if [ $USE_CUDA = 1 ]; then
 	ln -sfn $DEPS_FOLDER/libQuestMR/install/lib/libonnxruntime_providers_shared.so libonnxruntime_providers_shared.so
 	ln -sfn $DEPS_FOLDER/libQuestMR/install/lib/libonnxruntime_providers_cuda.so libonnxruntime_providers_cuda.so
