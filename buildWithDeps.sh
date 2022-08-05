@@ -1,5 +1,5 @@
 #!/bin/bash
-source config.sh
+source config.sh #config.sh from RPMixedRealityCapture
 
 USE_CUDA=0
 for i in "$@"; do
@@ -33,6 +33,7 @@ if [ $USE_CUDA = 1 ]; then
 else
 	bash buildWithDeps.sh --no_demo || exit 1
 fi
+source config.sh #config.sh from libQuestMR
 cd $BASE_FOLDER
 
 mkdir build
@@ -51,7 +52,7 @@ cp RPMixedRealityCapture $BASE_FOLDER/install
 cd $BASE_FOLDER/install
 ln -sfn $DEPS_FOLDER/libQuestMR/deps/BufferedSocket/install/lib/libBufferedSocket.so.0.1 libBufferedSocket.so.0.1
 ln -sfn $DEPS_FOLDER/libQuestMR/deps/RPCameraInterface/install/lib/libRPCameraInterface.so libRPCameraInterface.so
-ln -sfn $DEPS_FOLDER/libQuestMR/install/lib/libonnxruntime.so.1.10.0 libonnxruntime.so.1.10.0
+ln -sfn $DEPS_FOLDER/libQuestMR/install/lib/$onnxruntime_lib_name $onnxruntime_lib_name
 if [ $USE_CUDA = 1 ]; then
 	ln -sfn $DEPS_FOLDER/libQuestMR/install/lib/libonnxruntime_providers_shared.so libonnxruntime_providers_shared.so
 	ln -sfn $DEPS_FOLDER/libQuestMR/install/lib/libonnxruntime_providers_cuda.so libonnxruntime_providers_cuda.so
