@@ -11,7 +11,7 @@ On linux, just run the build script :
 `bash buildWithDeps.sh --cuda`  
 Remove --cuda if your computer does not have CUDA 11.2 installed.  
 
-On windows, use the installer (coming soon) or build from source.  
+On windows, use the installer or build from source.  
 Choose the CUDA version if you have CUDA installed on your computer, otherwise use DirectML version.
 
 On MacOS, build from source (not tested because I don't have any apple device, but all the libs used are compatible with MacOS so it should theorically work).
