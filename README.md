@@ -1,9 +1,9 @@
 # RPMixedRealityCapture
 
 Unofficial mixed reality capture software for Quest 2 without greenscreen, with support for usb webcams and android phones (soon).  
-Already usable but still have some bugs to fix. Easiest way to install is to use the buildWithDeps.sh script for linux. An installer for windows will be available soon.
+Still a beta version, please report if you find bugs.  
 Based on [libQuestMR](https://github.com/RandomPrototypes/libQuestMR) for communication with the Quest and
-[RPCameraInterface](https://github.com/RandomPrototypes/RPCameraInterface) for multi-platform camera interface (use the dev branch to compile with current version).
+[RPCameraInterface](https://github.com/RandomPrototypes/RPCameraInterface) for multi-platform camera interface.
 
 # How to install?
 
@@ -11,7 +11,7 @@ On linux, just run the build script :
 `bash buildWithDeps.sh --cuda`  
 Remove --cuda if your computer does not have CUDA 11.2 installed.  
 
-On windows, use the installer (coming soon) or build from source.  
+On windows, use the installer or build from source.  
 Choose the CUDA version if you have CUDA installed on your computer, otherwise use DirectML version.
 
 On MacOS, build from source (not tested because I don't have any apple device, but all the libs used are compatible with MacOS so it should theorically work).
