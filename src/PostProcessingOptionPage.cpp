@@ -887,23 +887,32 @@ void PostProcessingOptionPage::encodingThreadFunc()
 
         if(firstFrame)
             videoEncoder->open(encodingFilename.c_str(), img.rows, img.cols, 30, "", bitrate);
-        std::vector<float> audioData = remainingAudio;
-        remainingAudio.clear();
         int recordSampleRate = 44100;
-        if(nbAudioFrames > 0){
-            for(int i = 0; i < nbAudioFrames; i++) {
-                int size = listAudioData[i]->getDataLength() / sizeof(float);
-                const float *data = (const float*)listAudioData[i]->getData();
-                int size2 = size;// * recordSampleRate / listAudioData[i]->getSampleRate();
-                for(int j = 0; j < size2; j++)
-                    audioData.push_back(data[j*size/size2]);
+        for(int i = 0; i < nbAudioFrames; i++) {
+            std::vector<float> audioData = remainingAudio;
+            remainingAudio.clear();
+            int size = listAudioData[i]->getDataLength() / sizeof(float);
+            const float *data = (const float*)listAudioData[i]->getData();
+            uint32_t sampleRate = listAudioData[i]->getSampleRate();
+            int nbChannels = listAudioData[i]->getNbChannels();
+            int nbSamples = (size*48000/sampleRate)/nbChannels;
+            if(nbChannels == 1) {
+                for(int j = 0; j < 2*nbSamples; j++)
+                    audioData.push_back(data[(j/2)*sampleRate/48000]);
+            } else if(sampleRate != 48000) {
+                for(int j = 0; j < nbSamples; j++) {
+                    audioData.push_back(data[(j*sampleRate/48000)*2]);
+                    audioData.push_back(data[(j*sampleRate/48000)*2+1]);
+                }
+            } else {
+                for(int j = 0; j < size; j++)
+                    audioData.push_back(data[j]);
             }
-
             int nbAudioPacket = audioData.size() / 2048;
-            videoEncoder->write_audio(&audioData[0], nbAudioPacket * 2048, listAudioData[0]->getLocalTimestamp());
+            videoEncoder->write_audio(&audioData[0], nbAudioPacket * 2048, listAudioData[i]->getLocalTimestamp());
             audioData.erase(audioData.begin(), audioData.begin() + nbAudioPacket * 2048);
+            remainingAudio = audioData;
         }
-        remainingAudio = audioData;
         videoEncoder->write(RPCameraInterface::createImageDataFromMat(img, quest_timestamp, false));
 
         encodingMutex.lock();
