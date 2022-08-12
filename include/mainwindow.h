@@ -145,6 +145,7 @@ protected:
 
 
     volatile bool recording, recording_finished_camera, recording_finished_quest;
+    volatile bool closeQuestThreadAfterRecording;
     std::string recordedVideoFilename, recordedVideoTimestampFilename;
 
     QProcess *segmentationProcess = NULL;
