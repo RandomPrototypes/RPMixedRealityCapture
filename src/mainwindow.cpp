@@ -148,7 +148,7 @@ void MainWindow::questCommunicatorThreadFunc()
 void MainWindow::videoThreadFunc(std::string cameraId)
 {
     videoInput->closed = false;
-    recording_finished = false;
+    recording_finished_camera = false;
     /*cv::VideoCapture cap(cameraId);
 
     //cap.set(cv::CAP_PROP_FRAME_WIDTH,1920);
@@ -238,7 +238,7 @@ void MainWindow::videoThreadFunc(std::string cameraId)
                 videoEncoder->release();
                 videoEncoder = NULL;
             }
-            recording_finished = true;
+            recording_finished_camera = true;
             recordingStarted = false;
         }
         videoInput->setImg(img, timestamp);
@@ -267,34 +267,50 @@ void MainWindow::videoThreadFunc(std::string cameraId)
 
 void MainWindow::questThreadFunc()
 {
+    recording_finished_quest = false;
     std::shared_ptr<libQuestMR::QuestVideoSourceBufferedSocket> videoSrc = libQuestMR::createQuestVideoSourceBufferedSocket();
+    //videoSrc->setUseThread(false, 0);
     videoSrc->Connect(questIpAddress.c_str());
     questVideoMngr->attachSource(videoSrc);
     bool was_recording = recording;
     if(recording)
         questVideoMngr->setRecording(record_folder.c_str(), record_name.c_str());
+    int lastFrameId = -1;
     while(!questInput->closed)
     {
         if(was_recording != recording)
         {
-            questVideoMngr->detachSource();
             videoSrc->Disconnect();
+            while(was_recording && videoSrc->getBufferedDataLength() > 0) {
+                //qDebug() << "remaining buffer data: " << videoSrc->getBufferedDataLength();
+                questVideoMngr->VideoTickImpl(true);
+            }
+            recording_finished_quest = was_recording;
+            questVideoMngr->detachSource();
             videoSrc->Connect(questIpAddress.c_str());
             questVideoMngr->attachSource(videoSrc);
             if(recording)
                 questVideoMngr->setRecording(record_folder.c_str(), record_name.c_str());
             was_recording = recording;
+            lastFrameId = -1;
         }
+        //qDebug() << "buffered data: " << videoSrc->getBufferedDataLength();
         questVideoMngr->VideoTickImpl(true);
         uint64_t timestamp;
-        cv::Mat img = questVideoMngr->getMostRecentImg(&timestamp);
-        if(!img.empty())
+        int frameId;
+        cv::Mat img = questVideoMngr->getMostRecentImg(&timestamp, &frameId);
+        if(frameId != lastFrameId && !img.empty())
         {
             questInput->setImg(img, timestamp);
+            //qDebug() << "img timestamp " << timestamp;
         }
+        lastFrameId = frameId;
     }
+    qDebug() << "questVideoMngr->detachSource()";
     questVideoMngr->detachSource();
+    qDebug() << "videoSrc->Disconnect()";
     videoSrc->Disconnect();
+    qDebug() << "questThreadFunc closed";
 }
 
 void MainWindow::onTimer()

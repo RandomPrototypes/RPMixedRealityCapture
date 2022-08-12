@@ -6,5 +6,5 @@ if [ $RPMixedRealityCapture_branch = "master" ]; then
 elif [ $RPMixedRealityCapture_branch = "dev" ]; then
 	libQuestMR_branch="dev"
 else
-	libQuestMR_branch="v1.0.0"
+	libQuestMR_branch="v1.1.0"
 fi

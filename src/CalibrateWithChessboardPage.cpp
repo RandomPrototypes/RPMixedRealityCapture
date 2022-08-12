@@ -171,7 +171,7 @@ void CalibrateWithChessboardPage::onTimer()
             currentTriggerCount = win->questComThreadData->getTriggerCount();
         }
     } else if(state == CalibState::calibrate) {
-        if(win->recording_finished) {
+        if(win->recording_finished_camera) {
             detectChessboardsAndCalibrate();
             state = CalibState::verify;
             win->currentCalibrationFrame = 0;
