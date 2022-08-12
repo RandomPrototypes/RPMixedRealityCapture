@@ -54,6 +54,7 @@ MainWindow::MainWindow(QWidget *parent)
     camPreviewWidget = NULL;
 
     recording = false;
+    closeQuestThreadAfterRecording = false;
 
     timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(onTimer()));
@@ -280,24 +281,36 @@ void MainWindow::questThreadFunc()
     {
         if(was_recording != recording)
         {
+            qDebug() << "videoSrc->Disconnect()";
             videoSrc->Disconnect();
             while(was_recording && videoSrc->getBufferedDataLength() > 0) {
-                //qDebug() << "remaining buffer data: " << videoSrc->getBufferedDataLength();
+                qDebug() << "remaining buffer data: " << videoSrc->getBufferedDataLength();
                 questVideoMngr->VideoTickImpl(true);
             }
             recording_finished_quest = was_recording;
+            qDebug() << "questVideoMngr->detachSource()";
             questVideoMngr->detachSource();
-            videoSrc->Connect(questIpAddress.c_str());
+            if(was_recording && closeQuestThreadAfterRecording) {
+                qDebug() << "questThreadFunc closed after recording";
+                return ;
+            }
+            qDebug() << "videoSrc->Connect()";
+            if(!videoSrc->Connect(questIpAddress.c_str())) {
+                qDebug() << "Unable to reconnect to the quest";
+                break;
+            }
+            qDebug() << "questVideoMngr->attachSource()";
             questVideoMngr->attachSource(videoSrc);
             if(recording)
                 questVideoMngr->setRecording(record_folder.c_str(), record_name.c_str());
             was_recording = recording;
             lastFrameId = -1;
         }
-        //qDebug() << "buffered data: " << videoSrc->getBufferedDataLength();
+        qDebug() << "buffered data: " << videoSrc->getBufferedDataLength();
         questVideoMngr->VideoTickImpl(true);
         uint64_t timestamp;
         int frameId;
+        qDebug() << "questVideoMngr->getMostRecentImg()";
         cv::Mat img = questVideoMngr->getMostRecentImg(&timestamp, &frameId);
         if(frameId != lastFrameId && !img.empty())
         {
@@ -408,6 +421,7 @@ void MainWindow::stopQuestRecorder()
         delete questInput->videoThread;
         qDebug() << "quest recorder stopped\n";
         questInput->videoThread = NULL;
+        closeQuestThreadAfterRecording = false;
     }
 }
 
