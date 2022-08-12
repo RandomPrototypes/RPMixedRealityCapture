@@ -144,7 +144,7 @@ protected:
     std::vector<RPCameraInterface::ImageFormat> listCameraFormats;
 
 
-    volatile bool recording, recording_finished;
+    volatile bool recording, recording_finished_camera, recording_finished_quest;
     std::string recordedVideoFilename, recordedVideoTimestampFilename;
 
     QProcess *segmentationProcess = NULL;
