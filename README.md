@@ -10,6 +10,9 @@ Future plan :
 * Body tracking
 * Android, iphone, maybe raspberry pi support (the code is portable but the makefiles probably need to be modified)
 
+[![IMAGE ALT TEXT](http://img.youtube.com/vi/vT21NlOZrgQ/0.jpg)](https://www.youtube.com/watch?v=vT21NlOZrgQ "Mixed reality recording on Quest with RPMixedRealityCapture")
+
+
 # How to install?
 
 ### Linux
