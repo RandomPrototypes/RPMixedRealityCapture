@@ -98,8 +98,15 @@ void RecordMixedRealityPage::onClickStartRecordingButton()
     } else {
         win->closeQuestThreadAfterRecording = true;
         win->recording = false;
-        while(!win->recording_finished_camera || !win->recording_finished_quest)
+        int count = 0;
+        while(!win->recording_finished_camera || !win->recording_finished_quest) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            count++;
+            if(!win->recording_finished_quest && count == 20 && win->questVideoSrc != NULL) {
+                win->questVideoSrc->requestStopRead();
+            }
+
+        }
         win->stopCamera();
         win->stopQuestRecorder();
 

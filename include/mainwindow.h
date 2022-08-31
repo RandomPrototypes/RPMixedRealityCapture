@@ -154,6 +154,7 @@ protected:
     std::thread *postProcessingThread = NULL;
     std::shared_ptr<libQuestMR::QuestCommunicator> questCom;
     std::shared_ptr<libQuestMR::QuestCommunicatorThreadData> questComThreadData;
+    std::shared_ptr<libQuestMR::QuestVideoSourceBufferedSocket> questVideoSrc;
 
     std::vector<CalibrationFrame> listCalibrationFrames;
     int currentCalibrationFrame;

@@ -269,10 +269,10 @@ void MainWindow::videoThreadFunc(std::string cameraId)
 void MainWindow::questThreadFunc()
 {
     recording_finished_quest = false;
-    std::shared_ptr<libQuestMR::QuestVideoSourceBufferedSocket> videoSrc = libQuestMR::createQuestVideoSourceBufferedSocket();
+    questVideoSrc = libQuestMR::createQuestVideoSourceBufferedSocket();
     //videoSrc->setUseThread(false, 0);
-    videoSrc->Connect(questIpAddress.c_str());
-    questVideoMngr->attachSource(videoSrc);
+    questVideoSrc->Connect(questIpAddress.c_str());
+    questVideoMngr->attachSource(questVideoSrc);
     bool was_recording = recording;
     if(recording)
         questVideoMngr->setRecording(record_folder.c_str(), record_name.c_str());
@@ -282,9 +282,9 @@ void MainWindow::questThreadFunc()
         if(was_recording != recording)
         {
             qDebug() << "videoSrc->Disconnect()";
-            videoSrc->Disconnect();
-            while(was_recording && videoSrc->getBufferedDataLength() > 0) {
-                qDebug() << "remaining buffer data: " << videoSrc->getBufferedDataLength();
+            questVideoSrc->Disconnect();
+            while(was_recording && questVideoSrc->getBufferedDataLength() > 0) {
+                qDebug() << "remaining buffer data: " << questVideoSrc->getBufferedDataLength();
                 questVideoMngr->VideoTickImpl(true);
             }
             recording_finished_quest = was_recording;
@@ -295,18 +295,18 @@ void MainWindow::questThreadFunc()
                 return ;
             }
             qDebug() << "videoSrc->Connect()";
-            if(!videoSrc->Connect(questIpAddress.c_str())) {
+            if(!questVideoSrc->Connect(questIpAddress.c_str())) {
                 qDebug() << "Unable to reconnect to the quest";
                 break;
             }
             qDebug() << "questVideoMngr->attachSource()";
-            questVideoMngr->attachSource(videoSrc);
+            questVideoMngr->attachSource(questVideoSrc);
             if(recording)
                 questVideoMngr->setRecording(record_folder.c_str(), record_name.c_str());
             was_recording = recording;
             lastFrameId = -1;
         }
-        qDebug() << "buffered data: " << videoSrc->getBufferedDataLength();
+        qDebug() << "buffered data: " << questVideoSrc->getBufferedDataLength();
         questVideoMngr->VideoTickImpl(true);
         uint64_t timestamp;
         int frameId;
@@ -322,8 +322,9 @@ void MainWindow::questThreadFunc()
     qDebug() << "questVideoMngr->detachSource()";
     questVideoMngr->detachSource();
     qDebug() << "videoSrc->Disconnect()";
-    videoSrc->Disconnect();
+    questVideoSrc->Disconnect();
     qDebug() << "questThreadFunc closed";
+    questVideoSrc = NULL;
 }
 
 void MainWindow::onTimer()
@@ -417,6 +418,7 @@ void MainWindow::stopQuestRecorder()
     if(questInput->videoThread != NULL && !questInput->closed) {
         qDebug() << "stop quest recorder...\n";
         questInput->closed = true;
+
         questInput->videoThread->join();
         delete questInput->videoThread;
         qDebug() << "quest recorder stopped\n";

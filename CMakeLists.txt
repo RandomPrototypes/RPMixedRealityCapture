@@ -22,6 +22,12 @@ FetchContent_Populate(
     GIT_TAG 1dee28e51f9175a31955b9791c74c430fe13dc82
 )
 
+option(USE_DEPTHAI "Use DepthAI" OFF)
+
+if(USE_DEPTHAI)
+    find_package(depthai CONFIG REQUIRED)
+endif()
+
 find_package(BufferedSocket REQUIRED)
 message("BufferedSocket dir: ${BufferedSocket_DIR}")
 set(BufferedSocket_INCLUDE_DIR ${BufferedSocket_DIR}/../../../include)
