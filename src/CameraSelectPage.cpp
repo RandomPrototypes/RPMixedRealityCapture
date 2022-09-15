@@ -20,6 +20,11 @@ void CameraSelectPage::setPage()
     qDebug() << "CameraSelectPage::setPage()";
     win->currentPageName = MainWindow::PageName::cameraSelect;
     win->clearMainWidget();
+    win->currentCameraEnumId = -1;
+    currentCameraId = -1;
+    currentCameraResolutionId = -1;
+    currentCameraResolutionId = -1;
+    ignoreIndexChangeSignal = false;
     QVBoxLayout *layout = new QVBoxLayout();
     layout->setSpacing(0);
     layout->setContentsMargins(0, 0, 0, 10);
@@ -71,39 +76,84 @@ void CameraSelectPage::setPage()
 void CameraSelectPage::refreshCameraComboBox(std::shared_ptr<RPCameraInterface::CameraEnumerator> camEnumerator)
 {
     qDebug() << "refreshCameraComboBox";
-    listCameraCombo->clear();
     camEnumerator->detectCameras();
+    listCameraCombo->clear();
 
     listCameraIds.clear();
+    ignoreIndexChangeSignal = true;
     for (size_t i = 0; i < camEnumerator->count(); i++) {
         listCameraIds.push_back(camEnumerator->getCameraId(i));
-        listCameraCombo->addItem(QString(camEnumerator->getCameraName(i)));
         qDebug() << "listCameraCombo->addItem(" << camEnumerator->getCameraName(i) << ")";
+        listCameraCombo->addItem(QString(camEnumerator->getCameraName(i)));
     }
-    refreshCameraFormatComboBox();
+    ignoreIndexChangeSignal = false;
+    //refreshCameraResolutionComboBox();
+    emit onSelectCameraCombo(0);
 }
 
-void CameraSelectPage::refreshCameraFormatComboBox()
+int CameraSelectPage::findCameraFormatId(int width, int height, ImageType encoding)
 {
-    qDebug() << "refreshCameraFormatComboBox";
-    listCameraFormatCombo->clear();
-    if(listCameraCombo->currentIndex() >= 0 && listCameraCombo->currentIndex() < listCameraIds.size()) {
+    for(size_t i = 0; i < win->listCameraFormats.size(); i++) {
+        if(win->listCameraFormats[i].width == width && win->listCameraFormats[i].height == height && win->listCameraFormats[i].type == encoding)
+            return i;
+    }
+    return -1;
+}
+
+void CameraSelectPage::refreshCameraResolutionComboBox()
+{
+    qDebug() << "refreshCameraResolutionComboBox";
+    listCameraResolutionCombo->clear();
+    listCameraEncodingCombo->clear();
+    if(currentCameraId >= 0 && currentCameraId < listCameraIds.size()) {
         std::shared_ptr<CameraInterface> cam = getCameraInterface(win->listCameraEnumerator[win->currentCameraEnumId]->getBackend());
-        qDebug() << "cam->open(" << listCameraIds[listCameraCombo->currentIndex()].c_str() << ")";
-        if(!cam->open(listCameraIds[listCameraCombo->currentIndex()].c_str()))
+        qDebug() << "cam->open(" << listCameraIds[currentCameraId].c_str() << ")";
+        if(!cam->open(listCameraIds[currentCameraId].c_str()))
         {
             qDebug() << "!cam->open : " << cam->getErrorMsg();
             return ;
         }
-        std::vector<ImageFormat> listFormats = cam->getListAvailableFormat();
-        for (size_t i = 0; i < listFormats.size(); i++) {
-            std::string format = std::to_string(listFormats[i].width) + "x" + std::to_string(listFormats[i].height) + " ("+toString(listFormats[i].type).c_str()+")";
-            listCameraFormatCombo->addItem(QString(format.c_str()));
-            qDebug() << "listCameraFormatCombo->addItem(" << format.c_str() << ")";
+        win->listCameraFormats = cam->getListAvailableFormat();
+        listResolution = getListResolution(win->listCameraFormats);
+        ignoreIndexChangeSignal = true;
+        for (size_t i = 0; i < listResolution.size(); i++) {
+            std::string res = std::to_string(listResolution[i].width) + "x" + std::to_string(listResolution[i].height);
+            qDebug() << "listCameraResolutionCombo->addItem(" << res.c_str() << ")";
+            listCameraResolutionCombo->addItem(QString(res.c_str()));
         }
+        ignoreIndexChangeSignal = false;
         cam->close();
-        win->listCameraFormats = listFormats;
-        win->currentCameraFormatId = 0;
+        //currentCameraResolutionId = 0;
+        //refreshCameraEncodingComboBox();
+        emit onSelectResolutionCombo(0);
+    }
+}
+
+void CameraSelectPage::refreshCameraEncodingComboBox()
+{
+    qDebug() << "refreshCameraEncodingComboBox";
+    listCameraEncodingCombo->clear();
+    if(currentCameraResolutionId >= 0 && currentCameraResolutionId < listResolution.size() ) {
+        ImageFormat resolution = listResolution[currentCameraResolutionId];
+        listEncoding = getListImageType(win->listCameraFormats, resolution.width, resolution.height);
+        for (size_t i = 0; i < listEncoding.size(); i++) {
+            if(listEncoding[i] == ImageType::JPG) {
+                listEncoding.erase(listEncoding.begin()+i);
+                listEncoding.insert(listEncoding.begin(), ImageType::JPG);
+                break;
+            }
+        }
+        ignoreIndexChangeSignal = true;
+        for (size_t i = 0; i < listEncoding.size(); i++) {
+            ImageType encoding = listEncoding[i];
+            qDebug() << "listCameraEncodingCombo->addItem(" << toString(listEncoding[i]).c_str() << ")";
+            listCameraEncodingCombo->addItem(QString(toString(listEncoding[i]).c_str()));
+        }
+        ignoreIndexChangeSignal = false;
+        currentCameraEncodingId = 0;
+        if(listEncoding.size() > 0)
+            win->currentCameraFormatId = findCameraFormatId(resolution.width, resolution.height, listEncoding[0]);
+       else win->currentCameraFormatId = 0;
     }
 }
 
@@ -169,7 +219,8 @@ void CameraSelectPage::setCameraParamBox(std::shared_ptr<RPCameraInterface::Came
     QLabel *cameraFormatLabel = new QLabel;
     cameraFormatLabel->setText("Format: ");
 
-    listCameraFormatCombo = new QComboBox;
+    listCameraResolutionCombo = new QComboBox;
+    listCameraEncodingCombo = new QComboBox;
 
 
 
@@ -181,7 +232,8 @@ void CameraSelectPage::setCameraParamBox(std::shared_ptr<RPCameraInterface::Came
     cameraSelectLayout->addWidget(listCameraCombo);
 
     cameraSelectFormatLayout->addWidget(cameraFormatLabel);
-    cameraSelectFormatLayout->addWidget(listCameraFormatCombo);
+    cameraSelectFormatLayout->addWidget(listCameraResolutionCombo);
+    cameraSelectFormatLayout->addWidget(listCameraEncodingCombo);
 
 
     cameraParamLayout->addLayout(cameraSelectLayout);
@@ -192,25 +244,78 @@ void CameraSelectPage::setCameraParamBox(std::shared_ptr<RPCameraInterface::Came
 
     connect(selectButton,SIGNAL(clicked()),this,SLOT(onClickSelectCameraButton()));
     connect(listCameraCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(onSelectCameraCombo(int)));
+    connect(listCameraResolutionCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(onSelectResolutionCombo(int)));
+    connect(listCameraEncodingCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(onSelectEncodingCombo(int)));
 
     refreshCameraComboBox(camEnumerator);
 }
 
 void CameraSelectPage::onClickCameraButton(int i)
 {
-    win->currentCameraEnumId = i;
-    setCameraParamBox(win->listCameraEnumerator[i]);
+    if(ignoreIndexChangeSignal)
+        return;
+    if(win->currentCameraEnumId != i) {
+        qDebug() << "onClickCameraButton";
+        win->currentCameraEnumId = i;
+        currentCameraId = -1;
+        currentCameraResolutionId = -1;
+        currentCameraEncodingId = -1;
+        setCameraParamBox(win->listCameraEnumerator[i]);
+    } else {
+        qDebug() << "onClickCameraButton skipped because same index";
+    }
 }
 
 void CameraSelectPage::onSelectCameraCombo(int i)
 {
-    refreshCameraFormatComboBox();
+    if(ignoreIndexChangeSignal)
+        return;
+    if(currentCameraId != i) {
+        qDebug() << "onSelectCameraCombo";
+        currentCameraId = i;
+        currentCameraResolutionId = -1;
+        currentCameraEncodingId = -1;
+        refreshCameraResolutionComboBox();
+    } else {
+        qDebug() << "onSelectCameraCombo skipped because same index";
+    }
+}
+
+void CameraSelectPage::onSelectResolutionCombo(int i)
+{
+    if(ignoreIndexChangeSignal)
+        return;
+    if(currentCameraResolutionId != i) {
+        qDebug() << "onSelectResolutionCombo";
+        currentCameraResolutionId = i;
+        currentCameraEncodingId = -1;
+        refreshCameraEncodingComboBox();
+    } else {
+        qDebug() << "onSelectResolutionCombo skipped because same index";
+    }
+}
+
+void CameraSelectPage::onSelectEncodingCombo(int i)
+{
+    if(ignoreIndexChangeSignal)
+        return;
+    if(currentCameraEncodingId != i) {
+        qDebug() << "onSelectEncodingCombo";
+        currentCameraEncodingId = i;
+    } else {
+        qDebug() << "onSelectEncodingCombo skipped because same index";
+    }
 }
 
 void CameraSelectPage::onClickSelectCameraButton()
 {
-    win->cameraId = listCameraIds[listCameraCombo->currentIndex()];
-    win->currentCameraFormatId = listCameraFormatCombo->currentIndex();
+    win->cameraId = listCameraIds[currentCameraId];
+    ImageFormat resolution = listResolution[currentCameraResolutionId];
+    ImageType type = listEncoding[currentCameraEncodingId];
+    win->currentCameraFormatId = findCameraFormatId(resolution.width, resolution.height, type);
+    qDebug() << "selected " << resolution.width << "x" << resolution.height << " : " << toString(type).c_str();
+    ImageFormat selectedFormat = win->listCameraFormats[win->currentCameraFormatId];
+    qDebug() << "match " << win->currentCameraFormatId << " : " << selectedFormat.toString().c_str();
 
     if(win->isCalibrationSection)
         win->calibrationOptionPage->setPage();
