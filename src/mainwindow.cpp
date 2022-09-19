@@ -475,6 +475,8 @@ cv::Mat MainWindow::composeMixedRealityImg(const cv::Mat& questImg, const cv::Ma
     } else if(useQuestImg && !questImg.empty()) {
         background = questImg(cv::Rect(0,0,questImg.cols/2,questImg.rows));
         cv::resize(background, background, videoSize);
+        if(!useCamImg)
+            background = background.clone();
     }
     cv::Mat fgmask;
     if(useCamImg || useMatteImg) {

@@ -96,6 +96,7 @@ void CalibrateCameraPosePage::onClickAnnotateCalibFrameButton()
     if(state == CalibState::captureCamOrig) {
         capturedCamOrig = false;
         win->instructionLabel->setText("Capture a few calibration frames by moving the right controller in the scene and pressing the trigger button.\nFor best result, stay still for one second before pressing the trigger.");
+        nextButton->setText("Calibrate");
         state = CalibState::capture;
     } else {
         if(!estimateIntrinsic && win->listCalibrationFrames.size() < 4) {
@@ -149,9 +150,10 @@ void CalibrateCameraPosePage::onTimer()
             win->camPreviewWidget->setImg(img);
         }
     } else if(state == CalibState::waitingCalibrationUpload) {
-        qDebug() << "waitingCalibrationUpload";
-        if(win->questComThreadData->isCalibDataUploaded())
+        if(win->questComThreadData->isCalibDataUploaded()) {
+            qDebug() << "calibration upload success!!";
             win->checkCalibrationPage->setPage();
+        }
     }
 }
 
@@ -195,6 +197,7 @@ void CalibrateCameraPosePage::onClickPreviewWidget()
             win->questComThreadData->sendCalibDataToQuest(calibDataStr);
             state = CalibState::waitingCalibrationUpload;
             qDebug() << calibDataStr.c_str();
+            qDebug() << "waitingCalibrationUpload";
         }
         else win->currentCalibrationFrame = (win->currentCalibrationFrame+1) % win->listCalibrationFrames.size();
     }
