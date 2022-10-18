@@ -486,7 +486,7 @@ void PostProcessingOptionPage::updateDurationLabel()
 
 void PostProcessingOptionPage::readCameraFrame(uint64_t timestamp)
 {
-    while(cameraFrameId+1 < listCameraTimestamp.size() && absdiff(timestamp, listCameraTimestamp[cameraFrameId+1]) < absdiff(timestamp, listCameraTimestamp[cameraFrameId]))
+    while(cameraFrameId+1 < listCameraTimestamp.size() && absdiff(timestamp, listCameraTimestamp[cameraFrameId+1]) <= absdiff(timestamp, listCameraTimestamp[cameraFrameId]))
     {
         (*capCameraVid) >> currentFrameCam;
         cameraFrameId++;
@@ -494,10 +494,13 @@ void PostProcessingOptionPage::readCameraFrame(uint64_t timestamp)
     if(questVideoMngr != NULL && questVideoSrc->isValid()) {
         //qDebug() << "videoTickImpl";
         uint64_t quest_timestamp;
-        currentFrameQuest = questVideoMngr->getMostRecentImg(&quest_timestamp);
-        while(questVideoSrc->isValid() && quest_timestamp < listCameraTimestamp[cameraFrameId] + getCompositorConfig().camDelayMs) {
+        int frameId = 0;
+        currentFrameQuest = questVideoMngr->getMostRecentImg(&quest_timestamp, &frameId);
+        //qDebug() << "timestamp:" << timestamp << ", quest_timestamp:" << quest_timestamp << ", frameId " << frameId << "cam timestamp" << listCameraTimestamp[cameraFrameId];
+        while(questVideoSrc->isValid() && (frameId < 2 || quest_timestamp <= listCameraTimestamp[cameraFrameId] + getCompositorConfig().camDelayMs)) {
             questVideoMngr->VideoTickImpl();
-            currentFrameQuest = questVideoMngr->getMostRecentImg(&quest_timestamp);
+            currentFrameQuest = questVideoMngr->getMostRecentImg(&quest_timestamp, &frameId);
+            //qDebug() << "timestamp:" << timestamp << ", quest_timestamp:" << quest_timestamp << ", frameId " << frameId << "cam timestamp" << listCameraTimestamp[cameraFrameId];
         }
     }
     updateDurationLabel();
