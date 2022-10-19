@@ -80,9 +80,11 @@ void CameraSelectPage::refreshCameraComboBox(std::shared_ptr<RPCameraInterface::
     listCameraCombo->clear();
 
     listCameraIds.clear();
+    listCameraNames.clear();
     ignoreIndexChangeSignal = true;
     for (size_t i = 0; i < camEnumerator->count(); i++) {
         listCameraIds.push_back(camEnumerator->getCameraId(i));
+        listCameraNames.push_back(camEnumerator->getCameraName(i));
         qDebug() << "listCameraCombo->addItem(" << camEnumerator->getCameraName(i) << ")";
         listCameraCombo->addItem(QString(camEnumerator->getCameraName(i)));
     }
@@ -273,6 +275,7 @@ void CameraSelectPage::onSelectCameraCombo(int i)
     if(currentCameraId != i) {
         qDebug() << "onSelectCameraCombo";
         currentCameraId = i;
+        currentCameraName = (i >= 0 && i < listCameraNames.size()) ? listCameraNames[i] : "unknown";
         currentCameraResolutionId = -1;
         currentCameraEncodingId = -1;
         refreshCameraResolutionComboBox();
@@ -310,6 +313,7 @@ void CameraSelectPage::onSelectEncodingCombo(int i)
 void CameraSelectPage::onClickSelectCameraButton()
 {
     win->cameraId = listCameraIds[currentCameraId];
+    win->cameraName = currentCameraName;
     ImageFormat resolution = listResolution[currentCameraResolutionId];
     ImageType type = listEncoding[currentCameraEncodingId];
     win->currentCameraFormatId = findCameraFormatId(resolution.width, resolution.height, type);

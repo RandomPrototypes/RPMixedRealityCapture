@@ -157,6 +157,19 @@ void CalibrateCameraPosePage::onTimer()
     }
 }
 
+std::string removeSpecialCharacters(std::string str)
+{
+   std::string result;
+   for(size_t i = 0; i < str.size(); i++){
+       if((str[i] >= 'a' && str[i] <= 'z') || (str[i] >= 'A' && str[i] <= 'Z') || (str[i] >= '0' && str[i] <= '9')) {
+           result += str[i];
+       } else {
+           result += ' ';
+       }
+   }
+   return result;
+}
+
 void CalibrateCameraPosePage::onClickPreviewWidget()
 {
     if(state == CalibState::annotate)
@@ -168,6 +181,7 @@ void CalibrateCameraPosePage::onClickPreviewWidget()
             libQuestMR::QuestCalibData calibData;
             if(calibDataStr.size() > 0)
                 calibData.loadXMLString(calibDataStr.c_str());
+            calibData.setCameraName(removeSpecialCharacters(win->cameraName).c_str());
             calibData.setImageSize(win->listCalibrationFrames[0].img.size());
             for(int i = 0; i < 3; i++)
                 calibData.raw_translation[i] = win->listCalibrationFrames[0].frameData.raw_pos[i];

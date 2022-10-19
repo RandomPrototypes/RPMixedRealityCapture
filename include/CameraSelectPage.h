@@ -30,10 +30,11 @@ private:
     QComboBox *listCameraResolutionCombo;
     QComboBox *listCameraEncodingCombo;
     QVBoxLayout *cameraParamLayout;
-    std::vector<std::string> listCameraIds;
+    std::vector<std::string> listCameraIds, listCameraNames;
     std::vector<RPCameraInterface::ImageFormat> listResolution;
     std::vector<RPCameraInterface::ImageType> listEncoding;
     int currentCameraId, currentCameraResolutionId, currentCameraEncodingId;
+    std::string currentCameraName;
     bool ignoreIndexChangeSignal;
 };
 

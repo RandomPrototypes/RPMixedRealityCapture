@@ -127,7 +127,7 @@ protected:
     QTimer *timer;
     VideoInputMngr *videoInput;
     VideoInputMngr *questInput;
-    std::string cameraId;
+    std::string cameraId, cameraName;
 
     std::string questIpAddress = "192.168.10.106";
 
