@@ -71,7 +71,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
+    MainWindow(std::string resourceDir = "", QWidget *parent = nullptr);
     ~MainWindow();
 
     void setFrontPage();
@@ -89,6 +89,8 @@ public:
 
     void captureChessboardFrame();
     void detectChessboardsAndCalibrate();
+
+    void setResourceDir(std::string resourceDir);
 
     void startCamera();
     void startQuestRecorder();
@@ -128,6 +130,8 @@ protected:
     VideoInputMngr *videoInput;
     VideoInputMngr *questInput;
     std::string cameraId, cameraName;
+
+    std::string resourceDir;
 
     std::string questIpAddress = "192.168.10.106";
 

@@ -6,6 +6,8 @@
 
 #include <QApplication>
 
+#include <QDir>
+
 enum AndroidCameraCmd
 {
     EXIT = 100,
@@ -71,6 +73,19 @@ void calibrateCamPose(libQuestMR::QuestCalibData &calibData, cv::Point3d camOrig
     }
 }
 
+std::string findResourceFolder()
+{
+    QString appDirPath = QCoreApplication::applicationDirPath();
+    if(QDir(appDirPath+"/resources").exists()) {
+        return (appDirPath+"/resources").toStdString();
+    } else if(QDir("resources").exists()) {
+        return "resources";
+    } else if(QDir("../resources").exists()) {
+        return "../resources";
+    }
+    return "";
+}
+
 int main(int argc, char *argv[])
 {
     /*cv::Vec3f eulerVal(1.2f, 0.4f, -1.2f);
@@ -123,7 +138,6 @@ int main(int argc, char *argv[])
     //qDebug() << libQuestMR::testRotationEstimation();
     //return 0;*/
 
-    libQuestMR::setBackgroundSubtractorResourceFolder("resources/backgroundSub_data");
     /*BufferedSocket bufferedSock;
 
     if (!bufferedSock.connect("192.168.10.101", 25600))
@@ -217,7 +231,7 @@ int main(int argc, char *argv[])
     bufferedSock.disconnect();*/
 
     QApplication a(argc, argv);
-    MainWindow w;
+    MainWindow w(findResourceFolder());
     w.resize(1000,800);
     w.showMaximized();
     return a.exec();

@@ -37,10 +37,12 @@
 
 using namespace RPCameraInterface;
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(std::string resourceDir, QWidget *parent)
     : QMainWindow(parent)
 {
     mainWidget = new QWidget();
+
+    setResourceDir(resourceDir);
 
     videoInput = new VideoInputMngr();
     questInput = new VideoInputMngr();
@@ -88,6 +90,13 @@ MainWindow::~MainWindow()
     stopQuestCommunicator();
 }
 
+void MainWindow::setResourceDir(std::string resourceDir)
+{
+    this->resourceDir = resourceDir;
+    if(resourceDir.size() > 0)
+        libQuestMR::setBackgroundSubtractorResourceFolder((resourceDir+"/backgroundSub_data").c_str());
+}
+
 void MainWindow::setFrontPage()
 {
     currentPageName = PageName::frontPage;
@@ -98,7 +107,7 @@ void MainWindow::setFrontPage()
     QLabel *imageLabel = new QLabel;
     QLabel *textLabel = new QLabel;
 
-    QPixmap pixmap("resources/logo.png");
+    QPixmap pixmap((resourceDir+"/logo.png").c_str());
     imageLabel->setPixmap(pixmap);
     textLabel->setText("Welcome to RandomPrototypes' mixed reality capture (RPMRC)");
     QFont font;
