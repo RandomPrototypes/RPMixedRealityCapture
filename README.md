@@ -10,6 +10,8 @@ Future plan :
 * Body tracking
 * Android, iphone, maybe raspberry pi support (the code is portable but the makefiles probably need to be modified)
 
+[![IMAGE ALT TEXT](http://img.youtube.com/vi/vT21NlOZrgQ/0.jpg)](https://www.youtube.com/watch?v=vT21NlOZrgQ "Mixed reality recording on Quest with RPMixedRealityCapture")
+
 # How to install?
 
 ### Linux
@@ -22,8 +24,8 @@ Use the installer or build from source.
 Choose the CUDA version if you have CUDA installed on your computer, otherwise use DirectML version.
 
 ### MacOS
-Build from source (not tested because I don't have any apple device, but all the libs used are compatible with MacOS so it should theoretically work).  
-If any mac developer tries it, please comment on the process.
+Install it with homebrew :  
+`brew install RandomPrototypes/tap/rpmixedrealitycapture`
 
 # How to run?
 
@@ -34,7 +36,8 @@ Go to the install folder and run `./RPMixedRealityCapture`
 Run the executable RPMixedRealityCapture
 
 ### MacOS
-I didn't test it yet, run the executable
+Run the executable in the terminal  
+`rpmixedrealitycapture`
 
 # OpenCV backend
 
@@ -57,3 +60,9 @@ See the OpenCV documentation of cv::VideoCapture for more detail.
 
 The quest streaming code in libQuestMR is based on the official [OBS plugin for Quest 2](https://github.com/facebookincubator/obs-plugins).  
 I also got some inspiration from [RealityMixer](https://github.com/fabio914/RealityMixer)
+
+# Thanks to :
+
+HappyPlaceTraveler (@happyplacetrvlr) for beta-testing the application (especially for the MacOS port)
+
+
