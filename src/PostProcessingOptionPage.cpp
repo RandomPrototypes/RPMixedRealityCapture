@@ -13,6 +13,7 @@
 #include <QStyle>
 #include <QToolButton>
 #include <fstream>
+#include <QtGlobal>
 #include <QDebug>
 
 ClickSlider::ClickSlider(Qt::Orientation orientation, QWidget *parent) :
@@ -27,10 +28,19 @@ void ClickSlider::mousePressEvent(QMouseEvent *event) {
     initStyleOption(&opt);
     QRect sr = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderHandle, this);
     if (!sr.contains(event->pos()) && event->button() == Qt::LeftButton) {
-        if (orientation() == Qt::Vertical)
-            setValue(minimum() + ((maximum()-minimum()) * (height()-event->position().y())) / height() ) ;
-        else
-            setValue(minimum() + ((maximum()-minimum()) * event->position().x()) / width() ) ;
+        #if QT_VERSION >= 0x060000
+            qreal x = event->position().x();
+            qreal y = event->position().y();
+        #else
+            int x = event->x();
+            int y = event->y();
+        #endif
+        if (orientation() == Qt::Vertical) {
+
+            setValue(minimum() + ((maximum()-minimum()) * (height()-y)) / height() ) ;
+        } else {
+            setValue(minimum() + ((maximum()-minimum()) * x) / width() ) ;
+        }
         emit sliderMoved(value());
     }
     QSlider::mousePressEvent(event);
