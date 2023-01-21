@@ -15,6 +15,35 @@
 #include <fstream>
 #include <QDebug>
 
+ClickSlider::ClickSlider(Qt::Orientation orientation, QWidget *parent) :
+    QSlider(orientation, parent)
+{
+    setStyle(new ClickSliderStyle(this->style()));
+}
+
+
+void ClickSlider::mousePressEvent(QMouseEvent *event) {
+    QStyleOptionSlider opt;
+    initStyleOption(&opt);
+    QRect sr = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderHandle, this);
+    if (!sr.contains(event->pos()) && event->button() == Qt::LeftButton) {
+        if (orientation() == Qt::Vertical)
+            setValue(minimum() + ((maximum()-minimum()) * (height()-event->position().y())) / height() ) ;
+        else
+            setValue(minimum() + ((maximum()-minimum()) * event->position().x()) / width() ) ;
+        emit sliderMoved(value());
+    }
+    QSlider::mousePressEvent(event);
+}
+
+
+void ClickSlider::mouseReleaseEvent(QMouseEvent *event) {
+    if (event->button() == Qt::LeftButton) {
+        emit clicked(value());
+        QSlider::mouseReleaseEvent(event);
+    }
+}
+
 PostProcessingOptionPage::PostProcessingOptionPage(MainWindow *win)
     :win(win)
 {
@@ -39,6 +68,10 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
     config.useQuestImg = true;
     win->currentPageName = MainWindow::PageName::postProcessingOption;
     win->clearMainWidget();
+
+    seekToTime = -1;
+    startTrimFrame = 0;
+    endTrimFrame = 0;
 
     state = PostProcessingState::previewPause;
     selectShapeState = SelectShapeState::noSelection;
@@ -95,25 +128,54 @@ void PostProcessingOptionPage::setPage(bool isLivePreview)
         startEncodingButton->setText("start encoding");
         startEncodingButton->setMaximumWidth(200);
 
+        startTrimButton = new QPushButton();
+        startTrimButton->setText("[");
+        startTrimButton->setMaximumWidth(30);
+
+        endTrimButton = new QPushButton();
+        endTrimButton->setText("]");
+        endTrimButton->setMaximumWidth(30);
+
         playButton = new QToolButton();
         playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPlay));
 
         QToolButton *stopButton = new QToolButton();
         stopButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaStop));
 
+        videoSlider = new ClickSlider(Qt::Horizontal);
+        videoSlider->setRange(0, 10000);
+
         durationLabel = new QLabel();
         durationLabel->setText("00:00 / 00:00");
         durationLabel->setMaximumWidth(100);
 
-        QHBoxLayout *bottom_hlayout = new QHBoxLayout();
-        bottom_hlayout->addWidget(startEncodingButton);
-        bottom_hlayout->addWidget(playButton);
-        bottom_hlayout->addWidget(stopButton);
-        bottom_hlayout->addWidget(durationLabel);
-        layout->addLayout(bottom_hlayout, 10, 0, 1, 3);
+        QVBoxLayout *bottom_vlayout = new QVBoxLayout();
+
+        QHBoxLayout *bottom_hlayout1 = new QHBoxLayout();
+        bottom_hlayout1->addWidget(videoSlider);
+
+        QHBoxLayout *bottom_hlayout2 = new QHBoxLayout();
+        bottom_hlayout2->addWidget(startEncodingButton);
+        bottom_hlayout2->addWidget(startTrimButton);
+        bottom_hlayout2->addWidget(endTrimButton);
+        bottom_hlayout2->addWidget(playButton);
+        bottom_hlayout2->addWidget(stopButton);
+        bottom_hlayout2->addWidget(durationLabel);
+
+        /*bottom_hlayout1->setSpacing(0);
+        bottom_hlayout1->setContentsMargins(0, 0, 0, 0);
+        bottom_hlayout2->setSpacing(0);
+        bottom_hlayout2->setContentsMargins(0, 0, 0, 0);
+        bottom_vlayout->setSpacing(0);*/
+        bottom_vlayout->addLayout(bottom_hlayout1);
+        bottom_vlayout->addLayout(bottom_hlayout2);
+        layout->addLayout(bottom_vlayout, 10, 0, 1, 3);
         connect(playButton,SIGNAL(clicked()),this,SLOT(onClickPlayButton()));
         connect(stopButton,SIGNAL(clicked()),this,SLOT(onClickStopButton()));
+        connect(startTrimButton,SIGNAL(clicked()),this,SLOT(onClickStartTrimButton()));
+        connect(endTrimButton,SIGNAL(clicked()),this,SLOT(onClickEndTrimButton()));
         connect(startEncodingButton,SIGNAL(clicked()),this,SLOT(onClickStartEncodingButton()));
+        connect(videoSlider, SIGNAL(sliderMoved(int)), this, SLOT(onVideoSliderMoved(int)));
     }
 
     //hlayout1->addWidget(startEncodingButton);
@@ -351,7 +413,7 @@ void PostProcessingOptionPage::setQuestRecordingFilename(std::string questFilena
         if(std::ifstream(camFilename).good())
             camRecordingFileEdit->setText(camFilename.c_str());
     }
-    updateRecordingFile();
+    updateRecordingFile(true);
 }
 
 MixedRealityCompositorConfig& PostProcessingOptionPage::getCompositorConfig()
@@ -446,11 +508,17 @@ void PostProcessingOptionPage::onTimer()
         updatePreviewImg();
     } else {
         if(state == PostProcessingState::previewPlay || state == PostProcessingState::previewPause) {
-            if(state == PostProcessingState::previewPlay) {
+            if(state == PostProcessingState::previewPlay || seekToTime >= 0) {
                 uint64_t timestamp = libQuestMR::getTimestampMs() - startPlayTimestamp + listCameraTimestamp[0];
+                if(seekToTime >= 0) {
+                    timestamp = listCameraTimestamp[0] + seekToTime;
+                    startPlayTimestamp = libQuestMR::getTimestampMs() + listCameraTimestamp[0] - timestamp;
+                    qDebug() << "seekToTime" << seekToTime << ", startPlayTimestamp" << startPlayTimestamp;
+                }
                 readCameraFrame(timestamp);
             }
             updatePreviewImg();
+            seekToTime = -1;
         } else if(state == PostProcessingState::encodingStarted) {
             updatePreviewImg();
             updateDurationLabel();
@@ -462,7 +530,7 @@ void PostProcessingOptionPage::onTimer()
             msgBox.exec();
             state = PostProcessingState::previewPause;
             playButton->setIcon(win->style()->standardIcon(QStyle::SP_MediaPlay));
-            updateRecordingFile();
+            updateRecordingFile(false);
         }
     }
 }
@@ -476,21 +544,54 @@ void PostProcessingOptionPage::updateDurationLabel()
 {
     if(!isLivePreview)
     {
-        int currentTime = (int)(listCameraTimestamp[cameraFrameId] - listCameraTimestamp[0])/1000;
-        int duration = (int)(listCameraTimestamp[listCameraTimestamp.size()-1] - listCameraTimestamp[0])/1000;
+        int trim_currentTime = (int)(listCameraTimestamp[cameraFrameId] - listCameraTimestamp[startTrimFrame]);
+        int trim_duration = (int)(listCameraTimestamp[endTrimFrame] - listCameraTimestamp[startTrimFrame]);
+        int currentTimeS = trim_currentTime/1000;
+        int durationS = trim_duration/1000;
         char txt[255];
-        sprintf(txt, "%02d:%02d / %02d:%02d", currentTime/60, currentTime%60, duration/60, duration%60);
+        sprintf(txt, "%02d:%02d / %02d:%02d", currentTimeS/60, currentTimeS%60, durationS/60, durationS%60);
         durationLabel->setText(txt);
+        if(seekToTime < 0)
+            videoSlider->setValue(trim_currentTime*videoSlider->maximum()/trim_duration);
     }
+}
+
+int PostProcessingOptionPage::getClosestCameraTimestamp(uint64_t timestamp)
+{
+    uint64_t best_diff = std::numeric_limits<uint64_t>::max();
+    int best_id = 0;
+    for(size_t i = 0; i < listCameraTimestamp.size(); i++) {
+        uint64_t diff = listCameraTimestamp[i] < timestamp ? timestamp - listCameraTimestamp[i] : listCameraTimestamp[i] - timestamp;
+        if(diff < best_diff) {
+            best_id = i;
+            best_diff = diff;
+        }
+    }
+    return best_id;
+}
+
+void PostProcessingOptionPage::seekCameraTo(int frame_id)
+{
+    if(cameraFrameId > frame_id || frame_id > cameraFrameId + 50) {
+        for(int delta = 1; delta < 50; delta += 10) {
+            (*capCameraVid).set(cv::CAP_PROP_POS_FRAMES, (double)(frame_id-delta));
+            cameraFrameId = cvRound((*capCameraVid).get(cv::CAP_PROP_POS_FRAMES))-1;
+            if(cameraFrameId < frame_id)
+                break;
+        }
+    }
+    while(cameraFrameId < frame_id) {
+        (*capCameraVid) >> currentFrameCam;
+        cameraFrameId++;
+    }
+    qDebug() << "cameraFrameId" << cameraFrameId << ", CAP_PROP_POS_FRAMES : " << (*capCameraVid).get(cv::CAP_PROP_POS_FRAMES);
 }
 
 void PostProcessingOptionPage::readCameraFrame(uint64_t timestamp)
 {
-    while(cameraFrameId+1 < listCameraTimestamp.size() && absdiff(timestamp, listCameraTimestamp[cameraFrameId+1]) <= absdiff(timestamp, listCameraTimestamp[cameraFrameId]))
-    {
-        (*capCameraVid) >> currentFrameCam;
-        cameraFrameId++;
-    }
+    int targetCameraFrameId = getClosestCameraTimestamp(timestamp);
+    seekCameraTo(targetCameraFrameId);
+
     if(questVideoMngr != NULL && questVideoSrc->isValid()) {
         //qDebug() << "videoTickImpl";
         uint64_t quest_timestamp;
@@ -508,6 +609,7 @@ void PostProcessingOptionPage::readCameraFrame(uint64_t timestamp)
 
 bool PostProcessingOptionPage::loadCameraTimestamps(std::string filename)
 {
+    seekToTime = -1;
     listCameraTimestamp.clear();
     std::ifstream timestampFile(filename);
     std::string timestampStr;
@@ -522,6 +624,8 @@ bool PostProcessingOptionPage::loadCameraTimestamps(std::string filename)
         iss >> timestamp;
         listCameraTimestamp.push_back(timestamp);
     }
+    startTrimFrame = 0;
+    endTrimFrame = std::max(0, ((int)listCameraTimestamp.size())-1);
     return true;
 }
 
@@ -594,13 +698,20 @@ bool PostProcessingOptionPage::loadQuestRecordingFile()
     return true;
 }
 
-void PostProcessingOptionPage::updateRecordingFile()
+bool PostProcessingOptionPage::updateRecordingFile(bool resetTrimPos)
 {
+    int startTrimFrame_ = startTrimFrame;
+    int endTrimFrame_ = endTrimFrame;
     bool camValid = loadCameraRecordingFile();
     bool questValid = loadQuestRecordingFile();
 
+    if(!resetTrimPos) {
+        startTrimFrame = startTrimFrame_;
+        endTrimFrame = endTrimFrame_;
+    }
+
     if(!camValid || !questValid)
-        return ;
+        return false;
 
     while(questVideoSrc->isValid() && currentFrameQuest.cols < 100) {
         //qDebug() << "videoTickImpl";
@@ -610,9 +721,10 @@ void PostProcessingOptionPage::updateRecordingFile()
     }
 
     (*capCameraVid) >> currentFrameCam;
-    startPlayTimestamp = libQuestMR::getTimestampMs();
-    readCameraFrame(listCameraTimestamp[0]);
+    startPlayTimestamp = (int)libQuestMR::getTimestampMs() - (int)(listCameraTimestamp[startTrimFrame] - listCameraTimestamp[0]);
+    readCameraFrame(listCameraTimestamp[startTrimFrame]);
     updatePreviewImg();
+    return true;
 }
 
 void PostProcessingOptionPage::onClickQuestShowForegroundCheckbox()
@@ -660,7 +772,7 @@ void PostProcessingOptionPage::onClickCamRecordingFileBrowseButton()
                 if(std::ifstream(questFilename).good())
                     questRecordingFileEdit->setText(questFilename.c_str());
             }
-            updateRecordingFile();
+            updateRecordingFile(true);
         }
     }
 }
@@ -771,8 +883,20 @@ void PostProcessingOptionPage::onClickStopButton()
         startEncodingButton->setText("start encoding");
     } else {
         state = PostProcessingState::previewPause;
-        updateRecordingFile();
+        updateRecordingFile(false);
     }
+}
+
+void PostProcessingOptionPage::onClickStartTrimButton()
+{
+    startTrimFrame = cameraFrameId;
+    updateDurationLabel();
+}
+
+void PostProcessingOptionPage::onClickEndTrimButton()
+{
+    endTrimFrame = cameraFrameId;
+    updateDurationLabel();
 }
 
 void PostProcessingOptionPage::onClickSelectPlayAreaButton()
@@ -849,10 +973,14 @@ void PostProcessingOptionPage::encodingThreadFunc()
     uint64_t last_timestamp = 0;
     int last_frameId = -1;
 
-    (*capCameraVid) >> currentFrameCam;
-    cameraFrameId = 0;
+    /*cameraFrameId = -1;
+    while(cameraFrameId < startTrimFrame) {
+        (*capCameraVid) >> currentFrameCam;
+        cameraFrameId++;
+    }*/
 
-    while(state != PostProcessingState::encodingStopped && questVideoSrc->isValid())
+    qDebug() << "init start timestamp : " << listCameraTimestamp[startTrimFrame];
+    while(state != PostProcessingState::encodingStopped && questVideoSrc->isValid() && cameraFrameId <= endTrimFrame)
     {
         if(state == PostProcessingState::encodingPaused) {
             while(state == PostProcessingState::encodingPaused)
@@ -860,19 +988,20 @@ void PostProcessingOptionPage::encodingThreadFunc()
             continue;
         }
         cv::Mat questImg;
-        uint64_t quest_timestamp;
+        uint64_t quest_timestamp = 0;
         int frameId = last_frameId;
-        while((frameId == last_frameId || questImg.empty()) && questVideoSrc->isValid()) {
+        qDebug() << "start timestamp : " << listCameraTimestamp[startTrimFrame];
+        while((frameId == last_frameId || questImg.empty() || quest_timestamp + 100 < listCameraTimestamp[startTrimFrame]) && questVideoSrc->isValid()) {
             questVideoMngr->VideoTickImpl();
             questImg = questVideoMngr->getMostRecentImg(&quest_timestamp, &frameId);
-            //qDebug() << "timestamp: " << quest_timestamp << ", frameId: " << frameId;
+            qDebug() << "timestamp: " << quest_timestamp << ", frameId: " << frameId;
         }
-        if(!questVideoSrc->isValid())
+        if(!questVideoSrc->isValid() || cameraFrameId >= endTrimFrame)
             break;
-        while(cameraFrameId+1 < listCameraTimestamp.size() && absdiff(quest_timestamp, listCameraTimestamp[cameraFrameId+1]) < absdiff(quest_timestamp, listCameraTimestamp[cameraFrameId]))
+        while(cameraFrameId < endTrimFrame && absdiff(quest_timestamp, listCameraTimestamp[cameraFrameId+1]) < absdiff(quest_timestamp, listCameraTimestamp[cameraFrameId]))
         {
-            //qDebug() << "target timestamp : " << quest_timestamp;
-            //qDebug() << "currentTimestamp : " << listCameraTimestamp[cameraFrameId];
+            qDebug() << "target timestamp : " << quest_timestamp;
+            qDebug() << "currentTimestamp : " << listCameraTimestamp[cameraFrameId];
             (*capCameraVid) >> currentFrameCam;
             cameraFrameId++;
         }
@@ -940,10 +1069,9 @@ void PostProcessingOptionPage::onClickStartEncodingButton()
         return ;
     }
     state = PostProcessingState::encodingPaused;
-    bool camValid = loadCameraRecordingFile();
-    bool questValid = loadQuestRecordingFile();
+    bool camAndQuestValid = updateRecordingFile(false);
 
-    if(!camValid || !questValid) {
+    if(!camAndQuestValid) {
         QMessageBox msgBox;
         msgBox.setText("You must select the camera and quest recording files");
         msgBox.exec();
@@ -998,4 +1126,18 @@ void PostProcessingOptionPage::onClickBackToMenuButton()
     win->stopQuestRecorder();
     win->stopCamera();
     win->firstMenuPage->setPage();
+}
+
+void PostProcessingOptionPage::onVideoSliderMoved(int pos)
+{
+    qDebug() << "moved to " << pos;
+    if(!isLivePreview)
+    {
+        int currentTime = (int)(listCameraTimestamp[cameraFrameId] - listCameraTimestamp[0]);
+        int trim_duration = (int)(listCameraTimestamp[endTrimFrame] - listCameraTimestamp[startTrimFrame]);
+        int seekToTime_tmp = pos*trim_duration/videoSlider->maximum() + (int)(listCameraTimestamp[startTrimFrame] - listCameraTimestamp[0]);
+        if(seekToTime_tmp < currentTime)
+            updateRecordingFile(false);
+        seekToTime = seekToTime_tmp;
+    }
 }

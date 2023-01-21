@@ -5,6 +5,37 @@
 #include <libQuestMR/BackgroundSubtractor.h>
 #include <RPCameraInterface/VideoEncoder.h>
 #include <QCheckBox>
+#include <QSlider>
+#include <QProxyStyle>
+
+class ClickSliderStyle : public QProxyStyle
+{
+public:
+    using QProxyStyle::QProxyStyle;
+    virtual int styleHint(StyleHint hint, const QStyleOption * option = 0, const QWidget * widget = 0, QStyleHintReturn * returnData = 0) const{
+        if (hint == QStyle::SH_Slider_AbsoluteSetButtons)
+        {
+            return Qt::LeftButton;
+        }
+        else
+        {
+            return QProxyStyle::styleHint(hint, option, widget, returnData);
+        }
+  }
+};
+
+class ClickSlider : public QSlider
+{
+    Q_OBJECT
+protected:
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
+public:
+    explicit ClickSlider(Qt::Orientation orientation, QWidget *parent = 0);
+
+signals:
+    void clicked(int value) const;
+};
 
 class PostProcessingOptionPage : public QObject
 {
@@ -29,10 +60,13 @@ public slots:
     void onClickBlackBackgroundCheckbox();
     void onClickPlayButton();
     void onClickStopButton();
+    void onClickStartTrimButton();
+    void onClickEndTrimButton();
     void onClickSelectPlayAreaButton();
     void onClickPreviewWidget();
     void onClickSavePreviewSettingButton();
     void onClickBackToMenuButton();
+    void onVideoSliderMoved(int pos);
 private:
     bool loadCameraTimestamps(std::string filename);
     void readCameraFrame(uint64_t timestamp);
@@ -41,9 +75,11 @@ private:
     void refreshBackgroundSubtractorOption(bool questBackground);
     bool loadCameraRecordingFile();
     bool loadQuestRecordingFile();
-    void updateRecordingFile();
+    bool updateRecordingFile(bool resetTrimPos);
     void updatePreviewImg();
     void updatePlayArea();
+    int getClosestCameraTimestamp(uint64_t timestamp);
+    void seekCameraTo(int frame_id);
     MixedRealityCompositorConfig& getCompositorConfig();
 
     enum class SelectShapeState
@@ -73,10 +109,13 @@ private:
     QGridLayout *questBackgroundSubtractorOptionLayout;
     QCheckBox *questShowForegroundCheckBox;
 
+    QSlider *videoSlider;
     QToolButton *playButton;
     QLabel *durationLabel;
     QPushButton *startEncodingButton;
     QPushButton *selectPlayAreaButton;
+    QPushButton *startTrimButton;
+    QPushButton *endTrimButton;
 
     QCheckBox *camImgCheckbox;
     QCheckBox *questImgCheckbox;
@@ -106,6 +145,9 @@ private:
 
     bool isLivePreview;
     bool useGreenBackground, useBlackBackground, useQuestImg, useCamImg, useMatteImg;
+    int seekToTime;
+
+    int startTrimFrame, endTrimFrame;
 };
 
 
